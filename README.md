@@ -1,94 +1,67 @@
-# Realtime ICT Inventory Endpoint Agent
+# Realtime ICT Inventory System
 
-A lightweight Python agent to collect system information and report it to a central inventory server.
+A lightweight system to track hardware inventory across your network. It features a central server with a modern dashboard and standalone agents for client machines.
 
 ## Features
 
-- **Automated Data Collection**: Gathers hostname, IP, MAC, OS details, CPU/RAM/Disk usage, and boot time.
-- **Heartbeat Mechanism**: Sends data to a REST API at configurable intervals.
-- **Resilient**: Auto-retries on connection failure and runs indefinitely.
-- **Cross-Platform**: Designed for Windows but compatible with Linux/macOS.
+- **Realtime Dashboard**: View all devices, online status, and hardware specs in a sleek dark-mode UI.
+- **Detailed Hardware Info**: Captures Hostname, IP, OS, CPU, GPU, RAM, Disk, and System Type (Laptop/Desktop).
+- **Standalone Agent**: No need to install Python on client machines. Just run the EXE.
+- **Automatic Startup**: Agents and Server can be configured to run automatically on system boot.
 
-## Installation
+## 🚀 Deployment Guide
 
-1.  **Install Python**: Ensure Python 3.8+ is installed.
+### 1. Server Installation (The Central Machine)
+This machine will host the database and the dashboard.
+
+1.  **Prerequisites**: Ensure Python 3.8+ is installed on the server.
 2.  **Install Dependencies**:
     ```bash
-    py -m pip install -r requirements.txt
+    py -m pip install -r backend/requirements.txt
     ```
-3.  **Configuration**:
-    - Edit `config.json` to set your backend `api_url` and `api_key`.
-    - Adjust `interval_seconds` if needed (default is 300 seconds / 5 minutes).
+3.  **Start Automtically**:
+    - Navigate to the `backend` folder.
+    - Right-click `install_server_service.bat` and **Run as Administrator**.
+    - This registers the server to start automatically when the computer turns on.
+    
+    *Alternatively, run manually: `py -m uvicorn main:app --host 0.0.0.0 --port 8000` inside the backend folder.*
 
-## Usage
+4.  **Access Dashboard**: Open `http://localhost:8000` (or `http://YOUR_SERVER_IP:8000`).
 
-### Manual Run
-Run the agent directly from the command line:
+---
 
-```bash
-py agent.py
-```
+### 2. Client Deployment (The Devices to Track)
+You do **NOT** need to install Python on client machines.
 
-Press `Ctrl+C` to stop.
+1.  **Prepare the Package**:
+    - Locate the `deploy` folder on your server machine.
+    - Edit `deploy/config.json`:
+      ```json
+      {
+        "api_url": "http://YOUR_SERVER_IP:8000/api/v1/heartbeat",
+        "interval_seconds": 300
+      }
+      ```
+      *(Replace `YOUR_SERVER_IP` with the IP address of your server).*
 
-### Windows Background Service (Automated)
+2.  **Install on Clients**:
+    - Copy the `deploy` folder to the client machine (e.g., via USB or Network Share).
+    - Inside the folder, right-click `install_agent.bat` and **Run as Administrator**.
+    - **That's it!** The agent is now installed as a background service.
 
-To install the agent as a background service running at startup:
+3.  **Verification**:
+    - The agent will start immediately and effectively "call home" to the server.
+    - It will also restart automatically whenever the computer is powered on.
+    - Check the Dashboard to see the new device appear.
 
-1.  Open a terminal as **Administrator**.
-2.  Run the setup script:
+## Development
+
+If you want to modify the code:
+
+- **Backend**: FastAPI app in `backend/main.py`.
+- **Frontend**: React (Vite) app in `frontend/`.
+- **Agent**: Python script in `agent.py`.
+  - To rebuild the standalone EXE after changes:
     ```bash
-    py setup_service.py
+    py build_agent.py
     ```
-3.  The agent will now run automatically on system boot.
-
-### Windows Background Service (Manual)
-
-To run the agent silently in the background on startup:
-
-1.  Open **Task Scheduler** (taskschd.msc).
-2.  Click **Create Task**.
-3.  **General Tab**:
-    - Name: `ICTInventoryAgent`
-    - Check **Run whether user is logged on or not**.
-    - Check **Hidden** (optional, to hide console window).
-    - Check **Run with highest privileges** (required for some WMI/system calls).
-4.  **Triggers Tab**:
-    - New -> **At system startup**.
-5.  **Actions Tab**:
-    - New -> **Start a program**.
-    - Program/script: `pythonw.exe` (Use full path, e.g., `C:\Python39\pythonw.exe` to avoid console window).
-    - Add arguments: `c:\path\to\agent.py`
-    - Start in: `c:\path\to\` (Directory containing `agent.py` and `config.json`).
-6.  **Settings Tab**:
-    - Uncheck "Stop the task if it runs longer than 3 days".
-    - Check "If the task fails, restart every: 1 minute".
-7.  Click **OK** and enter credentials if prompted.
-
-### Logging
-Check `agent.log` in the same directory for status updates and error messages.
-
-## Deployment Workflow (How to rollout)
-
-To obtain device details from multiple machines:
-
-1.  **Host the Backend**:
-    - Run the backend on a central server (e.g., a server with IP `192.168.1.50`).
-    - Ensure the firewall allows traffic on port `8000` (or your chosen port).
-
-2.  **Configure the Agent**:
-    - Edit `config.json` on your computer.
-    - Change `api_url` to your server's IP: `"http://192.168.1.50:8000/api/v1/heartbeat"`.
-
-3.  **Distribute to Client PCs**:
-    - Copy the `ict-inventory` folder (containing `agent.py`, `config.json`, `setup_service.py`, `requirements.txt`) to the target machine (e.g., via USB, Shared Drive, or GPO).
-
-4.  **Install on Client**:
-    - Install Python on the client machine.
-    - Open CMD/Powershell as **Administrator**.
-    - Install dependencies: `py -m pip install -r requirements.txt`
-    - Run the setup script: `py setup_service.py`
-
-5.  **View Data**:
-    - One installed, the agent will send data every 5 minutes.
-    - View the inventory at `http://192.168.1.50:8000/api/v1/devices` or connect a frontend dashboard to this API.
