@@ -51,7 +51,13 @@ def install_service():
     if not is_admin():
         # Re-run with admin privileges
         print("Requesting administrator privileges...")
-        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " --install", None, 1)
+        if getattr(sys, 'frozen', False):
+            # If exe, runs itself
+            ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " --install", None, 1)
+        else:
+            # If script, run python with script path
+            script_path = os.path.abspath(__file__)
+            ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, f'"{script_path}" --install', None, 1)
         return
 
     # If bundled with PyInstaller, sys.executable is the exe path
@@ -62,10 +68,18 @@ def install_service():
     if getattr(sys, 'frozen', False):
         command = f'"{exe_path}"'
     else:
-        # If script, we might be running via python
-        # Fallback to current file
+        # If script, we want to run with pythonw.exe (no console)
+        # Assuming pythonw.exe is in the same directory as python.exe
+        python_dir = os.path.dirname(sys.executable)
+        pythonw_path = os.path.join(python_dir, "pythonw.exe")
+        
+        if os.path.exists(pythonw_path):
+            executable = pythonw_path
+        else:
+            executable = sys.executable
+            
         script_path = os.path.abspath(__file__)
-        command = f'"{sys.executable}" "{script_path}"'
+        command = f'"{executable}" "{script_path}"'
 
     task_name = "ICTInventoryAgent"
     

@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta
-import database, schemas
+from . import database, schemas
 import os
 
 app = FastAPI(title="ICT Inventory API")
