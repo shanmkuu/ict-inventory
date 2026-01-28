@@ -92,6 +92,36 @@ def install_service():
     except Exception as e:
         print(f"An error occurred: {e}")
 
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+def get_gpu_info():
+    """Retrieve GPU Name using PowerShell."""
+    try:
+        if platform.system() == "Windows":
+            cmd = "powershell \"Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name\""
+            output = subprocess.check_output(cmd, shell=True).decode().strip()
+            # Output might contain multiple lines if multiple GPUs
+            lines = [line.strip() for line in output.split('\r\n') if line.strip()]
+            if lines:
+                return ", ".join(lines) # Return all GPUs found
+    except:
+        pass
+    return "Unknown"
+
+def get_system_type():
+    """Retrieve System Type (Desktop/Laptop) via chassis type."""
+    try:
+        if platform.system() == "Windows":
+            # Simplified check using battery presence
+            if psutil.sensors_battery() is not None:
+                return "Laptop"
+            else:
+                return "Desktop" 
+    except:
+        pass
+    return "Unknown"
+
 def get_system_info():
     try:
         boot_time_timestamp = psutil.boot_time()
@@ -101,6 +131,7 @@ def get_system_info():
         boot_time = "Unknown"
 
     return {
+        "device_id": str(uuid.getnode()),
         "hostname": socket.gethostname(),
         "ip_address": socket.gethostbyname(socket.gethostname()),
         "mac_address": '-'.join(['{:02x}'.format((uuid.getnode() >> ele) & 0xff) for ele in range(0,8*6,8)][::-1]),
@@ -108,7 +139,9 @@ def get_system_info():
         "os_version": platform.version(),
         "os_release": platform.release(),
         "architecture": platform.machine(),
+        "system_type": get_system_type(),
         "cpu_model": platform.processor(),
+        "gpu_model": get_gpu_info(),
         "cpu_cores_logical": psutil.cpu_count(logical=True),
         "cpu_cores_physical": psutil.cpu_count(logical=False),
         "ram_total_gb": round(psutil.virtual_memory().total / (1024**3), 2),

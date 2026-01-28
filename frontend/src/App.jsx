@@ -13,18 +13,28 @@ const DeviceCard = ({ device }) => {
           {device.status || 'Unknown'}
         </div>
       </div>
-      
+
       <div className="device-details">
+        <div className="detail-item">
+          <span className="detail-label">Type</span>
+          <span className="detail-value">{device.system_type || 'PC'}</span>
+        </div>
         <div className="detail-item">
           <span className="detail-label">OS</span>
           <span className="detail-value" title={`${device.os_name} ${device.os_version}`}>
             {device.os_name} {device.os_release}
           </span>
         </div>
-        <div className="detail-item">
+        <div className="detail-item col-span-2">
           <span className="detail-label">CPU</span>
           <span className="detail-value" title={device.cpu_model}>
-            {device.cpu_cores_logical} Cores
+            {device.cpu_model || 'Unknown'}
+          </span>
+        </div>
+        <div className="detail-item col-span-2">
+          <span className="detail-label">GPU</span>
+          <span className="detail-value" title={device.gpu_model}>
+            {device.gpu_model || 'N/A'}
           </span>
         </div>
         <div className="detail-item">
