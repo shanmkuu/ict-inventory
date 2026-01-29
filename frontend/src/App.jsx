@@ -1,73 +1,18 @@
 import { useState, useEffect } from 'react'
-
-const DeviceCard = ({ device }) => {
-  return (
-    <div className="device-card">
-      <div className="device-header">
-        <div>
-          <h3 className="device-hostname">{device.hostname}</h3>
-          <span className="device-ip">{device.ip_address}</span>
-        </div>
-        <div className={`status-badge status-${device.status || 'unknown'}`}>
-          <div className="status-dot"></div>
-          {device.status || 'Unknown'}
-        </div>
-      </div>
-
-      <div className="device-details">
-        <div className="detail-item">
-          <span className="detail-label">Type</span>
-          <span className="detail-value">{device.system_type || 'PC'}</span>
-        </div>
-        <div className="detail-item">
-          <span className="detail-label">OS</span>
-          <span className="detail-value" title={`${device.os_name} ${device.os_version}`}>
-            {device.os_name} {device.os_release}
-          </span>
-        </div>
-        <div className="detail-item col-span-2">
-          <span className="detail-label">CPU</span>
-          <span className="detail-value" title={device.cpu_model}>
-            {device.cpu_model || 'Unknown'}
-          </span>
-        </div>
-        <div className="detail-item col-span-2">
-          <span className="detail-label">GPU</span>
-          <span className="detail-value" title={device.gpu_model}>
-            {device.gpu_model || 'N/A'}
-          </span>
-        </div>
-        <div className="detail-item">
-          <span className="detail-label">Memory</span>
-          <span className="detail-value">{device.ram_total_gb?.toFixed(1)} GB</span>
-        </div>
-        <div className="detail-item">
-          <span className="detail-label">Disk</span>
-          <span className="detail-value">{device.disk_total_gb?.toFixed(0)} GB</span>
-        </div>
-        <div className="detail-item">
-          <span className="detail-label">User</span>
-          <span className="detail-value">{device.current_user}</span>
-        </div>
-        <div className="detail-item">
-          <span className="detail-label">Last Seen</span>
-          <span className="detail-value">
-            {new Date(device.last_seen || Date.now()).toLocaleTimeString()}
-          </span>
-        </div>
-      </div>
-    </div>
-  )
-}
+import './App.css'
+import Sidebar from './components/Sidebar'
+import DashboardCharts from './components/DashboardCharts'
+import Settings from './components/Settings'
 
 function App() {
   const [devices, setDevices] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [activeTab, setActiveTab] = useState('dashboard')
 
   const fetchDevices = async () => {
     try {
-      const response = await fetch('http://10.10.6.56:8000/api/v1/devices')
+      const response = await fetch('http://10.10.6.56:8000/api/v1/devices?limit=1000')
       if (!response.ok) throw new Error('Failed to fetch devices')
       const data = await response.json()
       setDevices(data)
@@ -82,47 +27,151 @@ function App() {
 
   useEffect(() => {
     fetchDevices()
-    const interval = setInterval(fetchDevices, 5000)
+    const interval = setInterval(fetchDevices, 30000)
     return () => clearInterval(interval)
   }, [])
 
+  // Filtering Logic
+  const filteredDevices = devices.filter(device => {
+    if (activeTab === 'dashboard' || activeTab === 'all') return true
+    if (activeTab === 'desktop') return device.system_type === 'Desktop'
+    if (activeTab === 'laptop') return device.system_type === 'Laptop'
+    // Add more filters as needed
+    return true
+  })
+
+  const getPageTitle = () => {
+    switch (activeTab) {
+      case 'dashboard': return 'System Units Overview' // Matches image style
+      case 'all': return 'All Devices'
+      case 'desktop': return 'System Units (Desktops)'
+      case 'laptop': return 'Laptops'
+      case 'settings': return 'Settings'
+      default: return 'Dashboard'
+    }
+  }
+
   return (
-    <div className="app-container">
-      <div className="dashboard-header">
-        <h1 className="dashboard-title">ICT Inventory</h1>
-        <div className="stats" style={{ display: 'flex', gap: '2rem' }}>
-          <div className="stat">
-            <span style={{ color: 'var(--text-secondary)', marginRight: '0.5rem' }}>Total</span>
-            <span style={{ fontWeight: 'bold' }}>{devices.length}</span>
-          </div>
-          <div className="stat">
-            <span style={{ color: 'var(--text-secondary)', marginRight: '0.5rem' }}>Online</span>
-            <span style={{ fontWeight: 'bold', color: 'var(--success)' }}>
-              {devices.filter(d => d.status === 'online').length}
-            </span>
-          </div>
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f9f9f9', fontFamily: 'Arial, sans-serif' }}>
+      {/* Sidebar */}
+      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {/* Main Content */}
+      <div style={{ marginLeft: '250px', flex: 1, padding: '2rem' }}>
+
+        {/* Header */}
+        <div style={{ marginBottom: '2rem' }}>
+          <h1 style={{ margin: 0, fontSize: '2rem', color: '#333' }}>{getPageTitle()}</h1>
         </div>
+
+        {loading && <div style={{ color: '#666' }}>Loading inventory data...</div>}
+
+        {error && (
+          <div style={{
+            backgroundColor: '#FFEBEE',
+            color: '#B71C1C',
+            padding: '1rem',
+            borderRadius: '4px',
+            marginBottom: '1rem',
+            border: '1px solid #FFCDD2'
+          }}>
+            {error}
+          </div>
+        )}
+
+        {!loading && !error && (
+          <>
+            {/* Show Charts ONLY on Dashboard Tab */}
+            {activeTab === 'dashboard' && (
+              <>
+                <DashboardCharts devices={devices} />
+                <h2 style={{ fontSize: '1.2rem', color: '#555', marginTop: '2rem', marginBottom: '1rem' }}>Recent Activity</h2>
+              </>
+            )}
+
+            {activeTab === 'settings' ? (
+              <Settings devices={devices} />
+            ) : (
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '8px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                overflow: 'hidden',
+                display: activeTab === 'dashboard' || activeTab === 'all' || activeTab === 'desktop' || activeTab === 'laptop' ? 'block' : 'none'
+              }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead style={{ backgroundColor: '#f5f5f5', borderBottom: '2px solid #e0e0e0' }}>
+                    <tr>
+                      <th style={{ padding: '1rem', color: '#616161', fontSize: '0.85rem', textTransform: 'uppercase' }}>Hostname</th>
+                      <th style={{ padding: '1rem', color: '#616161', fontSize: '0.85rem', textTransform: 'uppercase' }}>User</th>
+                      <th style={{ padding: '1rem', color: '#616161', fontSize: '0.85rem', textTransform: 'uppercase' }}>IP / OS</th>
+                      <th style={{ padding: '1rem', color: '#616161', fontSize: '0.85rem', textTransform: 'uppercase' }}>Hardware (GPU / RAM / Disk)</th>
+                      <th style={{ padding: '1rem', color: '#616161', fontSize: '0.85rem', textTransform: 'uppercase' }}>Last Seen</th>
+                      <th style={{ padding: '1rem', color: '#616161', fontSize: '0.85rem', textTransform: 'uppercase' }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredDevices.map((device, index) => {
+                      // Check status based on last_seen
+                      // Ensure we treat it as UTC if no timezone specified to fix the 3-hour offset issue
+                      const dateStr = device.last_seen.endsWith('Z') ? device.last_seen : device.last_seen + 'Z'
+                      const lastSeenDate = new Date(dateStr)
+                      const now = new Date()
+                      const diffMs = now - lastSeenDate
+                      const isOnline = diffMs < 60000 * 5 // 5 mins
+                      const status = isOnline ? 'Online' : 'Offline'
+                      const statusColor = isOnline ? '#4CAF50' : '#BDBDBD'
+
+                      return (
+                        <tr key={device.device_id} style={{ borderBottom: '1px solid #eee' }}>
+                          <td style={{ padding: '1rem' }}>
+                            <div style={{ fontWeight: 'bold', color: '#424242' }}>{device.hostname}</div>
+                            <div style={{ fontSize: '0.8rem', color: '#9e9e9e' }}>{device.system_type || 'Unknown Type'}</div>
+                          </td>
+                          <td style={{ padding: '1rem', color: '#616161' }}>{device.current_user || '-'}</td>
+                          <td style={{ padding: '1rem', color: '#616161' }}>
+                            <div>{device.ip_address}</div>
+                            <div style={{ fontSize: '0.8rem', color: '#9e9e9e' }}>{device.os_name} {device.os_release}</div>
+                          </td>
+                          <td style={{ padding: '1rem', color: '#616161' }}>
+                            <div style={{ fontSize: '0.9rem', color: '#424242' }}>{device.gpu_model || 'No GPU Info'}</div>
+                            <div style={{ fontSize: '0.8rem', color: '#757575' }}>
+                              {device.ram_total_gb ? Math.round(device.ram_total_gb) + 'GB RAM' : '-'} • {device.disk_total_gb ? Math.round(device.disk_total_gb) + 'GB Disk' : '-'}
+                            </div>
+                          </td>
+                          <td style={{ padding: '1rem', color: '#616161' }}>
+                            {lastSeenDate.toLocaleTimeString()}
+                            <div style={{ fontSize: '0.8rem', color: '#9e9e9e' }}>{lastSeenDate.toLocaleDateString()}</div>
+                          </td>
+                          <td style={{ padding: '1rem' }}>
+                            <span style={{
+                              backgroundColor: statusColor,
+                              color: 'white',
+                              padding: '4px 8px',
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: 'bold'
+                            }}>
+                              {status}
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    {filteredDevices.length === 0 && (
+                      <tr>
+                        <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: '#9e9e9e' }}>
+                          No devices found for this category.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
       </div>
-
-      {loading && devices.length === 0 ? (
-        <div className="loading-container">
-          <div className="spinner"></div>
-        </div>
-      ) : error ? (
-        <div style={{ padding: '2rem', background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', borderRadius: '8px' }}>
-          {error}
-        </div>
-      ) : (
-        <div className="device-grid">
-          {devices.map(device => (
-            <DeviceCard key={device.device_id} device={device} />
-          ))}
-        </div>
-      )}
-
-      <footer>
-        System v1.0 • Realtime Monitoring Active
-      </footer>
     </div>
   )
 }

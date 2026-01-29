@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from . import database, schemas
 import os
 
@@ -51,11 +51,11 @@ def receive_heartbeat(
         for key, value in device_data.dict().items():
             if key != "timestamp": # We don't store the agent sent timestamp in DB model directly as 'timestamp', we use last_seen
                 setattr(db_device, key, value)
-        db_device.last_seen = datetime.utcnow()
+        db_device.last_seen = datetime.now(timezone.utc)
     else:
         # Create new
         db_device = database.Device(**device_data.dict(exclude={"timestamp"}))
-        db_device.last_seen = datetime.utcnow()
+        db_device.last_seen = datetime.now(timezone.utc)
         db.add(db_device)
     
     db.commit()
@@ -83,7 +83,12 @@ def enrich_device_status(device: database.Device) -> schemas.Device:
     # Or just attach attribute if compatible. Pydantic from_orm handles reading attributes.
     # But 'status' is not in DB. We can wrap it.
     
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
+    
+    # helper: ensure last_seen is timezone aware (treat existing naive times as UTC)
+    if device.last_seen and device.last_seen.tzinfo is None:
+        device.last_seen = device.last_seen.replace(tzinfo=timezone.utc)
+        
     diff = now - device.last_seen
     
     status = "online"

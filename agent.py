@@ -13,12 +13,20 @@ import uuid
 import os
 from datetime import datetime
 
+# Determine base path for logging (and config)
+if getattr(sys, 'frozen', False):
+    base_path = os.path.dirname(sys.executable)
+else:
+    base_path = os.path.dirname(os.path.abspath(__file__))
+
+log_file_path = os.path.join(base_path, "agent.log")
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("agent.log"),
+        logging.FileHandler(log_file_path),
         logging.StreamHandler()
     ]
 )
@@ -90,7 +98,7 @@ def install_service():
         'schtasks', '/Create', 
         '/TN', task_name, 
         '/TR', command, 
-        '/SC', 'ONSTART', 
+        '/SC', 'ONLOGON', 
         '/RU', 'SYSTEM', 
         '/RL', 'HIGHEST',
         '/F'

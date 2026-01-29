@@ -77,6 +77,9 @@ def install_server_task():
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         if result.returncode == 0:
             print(f"SUCCESS: Server service installed. It will run automatically at startup.")
+            # Run immediately
+            print("Starting service now...")
+            subprocess.run(['schtasks', '/Run', '/TN', task_name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         else:
             print(f"ERROR: Failed to install service.")
             print(result.stderr)
