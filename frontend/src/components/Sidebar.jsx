@@ -1,7 +1,7 @@
 import React from 'react'
 import { LayoutDashboard, Monitor, Laptop, Server, Printer, Settings } from 'lucide-react'
 
-const Sidebar = ({ activeTab, onTabChange }) => {
+const Sidebar = ({ activeTab, onTabChange, darkMode }) => {
     const menuItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { type: 'external', label: 'EQUIPMENTS', href: 'http://172.16.1.18/auth/login/', isHeader: true },
@@ -17,8 +17,8 @@ const Sidebar = ({ activeTab, onTabChange }) => {
         <div className="sidebar" style={{
             width: '250px',
             height: '100vh',
-            backgroundColor: '#f5f5f5', // Light gray background like image
-            borderRight: '1px solid #e0e0e0',
+            backgroundColor: darkMode ? '#181818' : '#f5f5f5', // Darker gray for dark mode
+            borderRight: `1px solid ${darkMode ? '#333' : '#e0e0e0'}`,
             display: 'flex',
             flexDirection: 'column',
             position: 'fixed',
@@ -38,7 +38,7 @@ const Sidebar = ({ activeTab, onTabChange }) => {
                                 padding: '1rem 1.5rem 0.5rem',
                                 fontSize: '0.75rem',
                                 fontWeight: 'bold',
-                                color: '#9e9e9e',
+                                color: darkMode ? '#888' : '#9e9e9e',
                                 textTransform: 'uppercase'
                             }}>
                                 {item.title}
@@ -56,13 +56,13 @@ const Sidebar = ({ activeTab, onTabChange }) => {
                                     padding: '1rem 1.5rem 0.5rem',
                                     fontSize: '0.75rem',
                                     fontWeight: 'bold',
-                                    color: '#9e9e9e',
+                                    color: darkMode ? '#888' : '#9e9e9e',
                                     textTransform: 'uppercase',
                                     textDecoration: 'none',
                                     cursor: 'pointer'
                                 }}
                                 onMouseEnter={(e) => e.target.style.color = '#4CAF50'}
-                                onMouseLeave={(e) => e.target.style.color = '#9e9e9e'}
+                                onMouseLeave={(e) => e.target.style.color = darkMode ? '#888' : '#9e9e9e'}
                             >
                                 {item.label}
                             </a>
@@ -82,8 +82,8 @@ const Sidebar = ({ activeTab, onTabChange }) => {
                                 alignItems: 'center',
                                 gap: '12px',
                                 cursor: 'pointer',
-                                color: isActive ? '#4CAF50' : '#616161',
-                                backgroundColor: isActive ? '#E8F5E9' : 'transparent',
+                                color: isActive ? '#4CAF50' : (darkMode ? '#ddd' : '#616161'),
+                                backgroundColor: isActive ? (darkMode ? '#2c3e2e' : '#E8F5E9') : 'transparent',
                                 borderLeft: isActive ? '4px solid #4CAF50' : '4px solid transparent',
                                 transition: 'all 0.2s ease'
                             }}

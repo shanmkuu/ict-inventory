@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { Server, Download, Moon, Sun, Shield, Database, RefreshCw, Settings as SettingsIcon } from 'lucide-react'
 
-const SettingsCard = ({ title, icon: Icon, children }) => (
+const SettingsCard = ({ title, icon: Icon, children, darkMode }) => (
     <div style={{
-        backgroundColor: 'white',
+        backgroundColor: darkMode ? '#1e1e1e' : 'white',
         borderRadius: '8px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         marginBottom: '1.5rem',
@@ -11,13 +11,13 @@ const SettingsCard = ({ title, icon: Icon, children }) => (
     }}>
         <div style={{
             padding: '1rem 1.5rem',
-            borderBottom: '1px solid #eee',
+            borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}`,
             display: 'flex',
             alignItems: 'center',
             gap: '10px'
         }}>
             <Icon size={20} color="#4CAF50" />
-            <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#333' }}>{title}</h3>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', color: darkMode ? '#fff' : '#333' }}>{title}</h3>
         </div>
         <div style={{ padding: '1.5rem' }}>
             {children}
@@ -25,8 +25,8 @@ const SettingsCard = ({ title, icon: Icon, children }) => (
     </div>
 )
 
-const Settings = ({ devices }) => {
-    const [darkMode, setDarkMode] = useState(false)
+const Settings = ({ devices, darkMode, toggleTheme }) => {
+    // const [darkMode, setDarkMode] = useState(false) // Removed local state
     const [refreshRate, setRefreshRate] = useState(30)
 
     const handleExportCSV = () => {
@@ -61,42 +61,42 @@ const Settings = ({ devices }) => {
         <div style={{ maxWidth: '800px' }}>
 
             {/* System Status */}
-            <SettingsCard title="System Status" icon={Server}>
+            <SettingsCard title="System Status" icon={Server} darkMode={darkMode}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
                     <div>
-                        <div style={{ fontSize: '0.85rem', color: '#666' }}>Server Address</div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#333' }}>10.10.6.56</div>
+                        <div style={{ fontSize: '0.85rem', color: darkMode ? '#aaa' : '#666' }}>Server Address</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: darkMode ? '#e0e0e0' : '#333' }}>10.10.6.56</div>
                     </div>
                     <div>
-                        <div style={{ fontSize: '0.85rem', color: '#666' }}>Port</div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#333' }}>8000</div>
+                        <div style={{ fontSize: '0.85rem', color: darkMode ? '#aaa' : '#666' }}>Port</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: darkMode ? '#e0e0e0' : '#333' }}>8000</div>
                     </div>
                     <div>
-                        <div style={{ fontSize: '0.85rem', color: '#666' }}>Database Status</div>
+                        <div style={{ fontSize: '0.85rem', color: darkMode ? '#aaa' : '#666' }}>Database Status</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '1.1rem', fontWeight: 'bold', color: '#4CAF50' }}>
                             <Database size={16} /> Connected
                         </div>
                     </div>
                     <div>
-                        <div style={{ fontSize: '0.85rem', color: '#666' }}>Agent Version</div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#333' }}>v1.2.0</div>
+                        <div style={{ fontSize: '0.85rem', color: darkMode ? '#aaa' : '#666' }}>Agent Version</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: darkMode ? '#e0e0e0' : '#333' }}>v1.2.0</div>
                     </div>
                 </div>
             </SettingsCard>
 
             {/* Preferences */}
-            <SettingsCard title="Preferences" icon={SettingsIcon}>
+            <SettingsCard title="Preferences" icon={SettingsIcon} darkMode={darkMode}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                     <div>
-                        <div style={{ fontWeight: 'bold', color: '#333' }}>Dark Mode</div>
-                        <div style={{ fontSize: '0.85rem', color: '#666' }}>Switch to dark theme interface</div>
+                        <div style={{ fontWeight: 'bold', color: darkMode ? '#e0e0e0' : '#333' }}>Dark Mode</div>
+                        <div style={{ fontSize: '0.85rem', color: darkMode ? '#aaa' : '#666' }}>Switch to dark theme interface</div>
                     </div>
                     <button
-                        onClick={() => setDarkMode(!darkMode)}
+                        onClick={toggleTheme}
                         style={{
                             padding: '8px 16px',
                             borderRadius: '20px',
-                            border: '1px solid #ddd',
+                            border: `1px solid ${darkMode ? '#555' : '#ddd'}`,
                             background: darkMode ? '#333' : '#fff',
                             color: darkMode ? '#fff' : '#333',
                             cursor: 'pointer',
@@ -112,8 +112,8 @@ const Settings = ({ devices }) => {
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div>
-                        <div style={{ fontWeight: 'bold', color: '#333' }}>Dashboard Refresh Rate</div>
-                        <div style={{ fontSize: '0.85rem', color: '#666' }}>How often to fetch new data (Current: {refreshRate}s)</div>
+                        <div style={{ fontWeight: 'bold', color: darkMode ? '#e0e0e0' : '#333' }}>Dashboard Refresh Rate</div>
+                        <div style={{ fontSize: '0.85rem', color: darkMode ? '#aaa' : '#666' }}>How often to fetch new data (Current: {refreshRate}s)</div>
                     </div>
                     <input
                         type="range"
@@ -128,7 +128,7 @@ const Settings = ({ devices }) => {
             </SettingsCard>
 
             {/* Data Management */}
-            <SettingsCard title="Data Management" icon={Database}>
+            <SettingsCard title="Data Management" icon={Database} darkMode={darkMode}>
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                     <button
                         onClick={handleExportCSV}

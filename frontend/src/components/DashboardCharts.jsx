@@ -3,23 +3,23 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recha
 
 const COLORS = ['#EF5350', '#FFA726', '#66BB6A', '#42A5F5', '#AB47BC', '#8D6E63']
 
-const ChartCard = ({ title, children }) => (
+const ChartCard = ({ title, children, darkMode }) => (
     <div style={{
-        backgroundColor: 'white',
+        backgroundColor: darkMode ? '#1e1e1e' : 'white',
         padding: '1.5rem',
         borderRadius: '8px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         flex: 1,
         minWidth: '300px'
     }}>
-        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: '#424242' }}>{title}</h3>
+        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: darkMode ? '#e0e0e0' : '#424242' }}>{title}</h3>
         <div style={{ height: '200px' }}>
             {children}
         </div>
     </div>
 )
 
-const DashboardCharts = ({ devices }) => {
+const DashboardCharts = ({ devices, darkMode }) => {
     const ramData = useMemo(() => {
         const counts = {}
         devices.forEach(d => {
@@ -54,7 +54,7 @@ const DashboardCharts = ({ devices }) => {
 
     return (
         <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
-            <ChartCard title="System Types (Brands)">
+            <ChartCard title="System Types (Brands)" darkMode={darkMode}>
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie
@@ -70,13 +70,13 @@ const DashboardCharts = ({ devices }) => {
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                         </Pie>
-                        <Tooltip />
-                        <Legend verticalAlign="middle" align="left" layout="vertical" />
+                        <Tooltip contentStyle={{ backgroundColor: darkMode ? '#333' : '#fff', borderColor: darkMode ? '#555' : '#ccc', color: darkMode ? '#fff' : '#000' }} />
+                        <Legend verticalAlign="middle" align="left" layout="vertical" formatter={(value) => <span style={{ color: darkMode ? '#bbb' : '#000' }}>{value}</span>} />
                     </PieChart>
                 </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title="RAM Distribution">
+            <ChartCard title="RAM Distribution" darkMode={darkMode}>
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie
@@ -92,13 +92,13 @@ const DashboardCharts = ({ devices }) => {
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                         </Pie>
-                        <Tooltip />
-                        <Legend verticalAlign="middle" align="left" layout="vertical" />
+                        <Tooltip contentStyle={{ backgroundColor: darkMode ? '#333' : '#fff', borderColor: darkMode ? '#555' : '#ccc', color: darkMode ? '#fff' : '#000' }} />
+                        <Legend verticalAlign="middle" align="left" layout="vertical" formatter={(value) => <span style={{ color: darkMode ? '#bbb' : '#000' }}>{value}</span>} />
                     </PieChart>
                 </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title="Storage Capacity">
+            <ChartCard title="Storage Capacity" darkMode={darkMode}>
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie
@@ -114,8 +114,8 @@ const DashboardCharts = ({ devices }) => {
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                         </Pie>
-                        <Tooltip />
-                        <Legend verticalAlign="middle" align="left" layout="vertical" />
+                        <Tooltip contentStyle={{ backgroundColor: darkMode ? '#333' : '#fff', borderColor: darkMode ? '#555' : '#ccc', color: darkMode ? '#fff' : '#000' }} />
+                        <Legend verticalAlign="middle" align="left" layout="vertical" formatter={(value) => <span style={{ color: darkMode ? '#bbb' : '#000' }}>{value}</span>} />
                     </PieChart>
                 </ResponsiveContainer>
             </ChartCard>
