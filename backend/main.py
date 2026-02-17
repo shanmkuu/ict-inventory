@@ -6,9 +6,12 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta, timezone
 from . import database, schemas
+from .routes import network_devices
 import os
 
 app = FastAPI(title="ICT Inventory API")
+
+app.include_router(network_devices.router, prefix="/api/v1/network", tags=["Network Devices"])
 
 app.add_middleware(
     CORSMiddleware,
@@ -128,6 +131,9 @@ if os.path.exists(frontend_dist):
     
     @app.get("/{full_path:path}")
     async def serve_frontend(full_path: str):
+        if full_path.startswith("api"):
+            raise HTTPException(status_code=404, detail="API Endpoint not found")
+
         # API routes are already handled above.
         # Check if file exists in dist
         file_path = os.path.join(frontend_dist, full_path)

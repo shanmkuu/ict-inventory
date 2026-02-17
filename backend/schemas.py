@@ -31,4 +31,29 @@ class Device(DeviceBase):
     status: str = "offline" # Computed field
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+
+class NetworkDeviceBase(BaseModel):
+    ip_address: str
+    mac_address: Optional[str] = None
+    device_type: Optional[str] = "unknown"
+    vendor: Optional[str] = None
+    model: Optional[str] = None
+    serial_number: Optional[str] = None
+    hostname: Optional[str] = None
+    dns_name: Optional[str] = None
+    uptime: Optional[str] = None
+    firmware_version: Optional[str] = None
+    system_status: Optional[str] = "offline"
+    open_ports: Optional[str] = "[]" # JSON string
+    raw_snmp_data: Optional[str] = "{}" # JSON string
+
+class NetworkDeviceCreate(NetworkDeviceBase):
+    pass
+
+class NetworkDevice(NetworkDeviceBase):
+    id: int
+    last_seen: datetime
+
+    class Config:
+        from_attributes = True

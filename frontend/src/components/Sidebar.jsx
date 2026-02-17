@@ -1,5 +1,5 @@
 import React from 'react'
-import { LayoutDashboard, Monitor, Laptop, Server, Printer, Settings } from 'lucide-react'
+import { LayoutDashboard, Monitor, Laptop, Server, Printer, Settings, Network } from 'lucide-react'
 
 const Sidebar = ({ activeTab, onTabChange, darkMode }) => {
     const menuItems = [
@@ -10,6 +10,7 @@ const Sidebar = ({ activeTab, onTabChange, darkMode }) => {
         { id: 'laptop', label: 'Laptops', icon: Laptop }, // Filter: System Type = Laptop
         // { id: 'mac', label: 'Mac Desktops', icon: Monitor }, // Placeholder for future
         { type: 'external', label: 'Static Inventory', href: 'http://172.16.1.18/dashboard/system-units/', isHeader: true },
+        { id: 'network-devices', label: 'Network Devices', icon: Network },
         { id: 'settings', label: 'Settings', icon: Settings },
     ]
 
@@ -27,7 +28,7 @@ const Sidebar = ({ activeTab, onTabChange, darkMode }) => {
         }}>
             <div style={{ padding: '1.5rem', fontWeight: 'bold', fontSize: '1.2rem', color: '#4CAF50', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#EF5350', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>K</div>
-                ICT Inventory
+                ICT Inventory v1.1
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto' }}>

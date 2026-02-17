@@ -33,5 +33,24 @@ class Device(Base):
     current_user = Column(String)
     last_seen = Column(DateTime, default=datetime.utcnow)
 
+class NetworkDevice(Base):
+    __tablename__ = "network_devices"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ip_address = Column(String, index=True)
+    mac_address = Column(String, index=True)
+    device_type = Column(String) # router, switch, firewall, printer, etc.
+    vendor = Column(String)
+    model = Column(String)
+    serial_number = Column(String)
+    hostname = Column(String)
+    dns_name = Column(String)
+    uptime = Column(String)
+    firmware_version = Column(String)
+    system_status = Column(String) # online/offline/warning
+    open_ports = Column(String) # JSON string
+    raw_snmp_data = Column(String) # JSON string
+    last_seen = Column(DateTime, default=datetime.utcnow)
+
 def init_db():
     Base.metadata.create_all(bind=engine)

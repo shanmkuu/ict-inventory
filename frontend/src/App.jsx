@@ -3,6 +3,7 @@ import './App.css'
 import Sidebar from './components/Sidebar'
 import DashboardCharts from './components/DashboardCharts'
 import Settings from './components/Settings'
+import NetworkDevices from './components/NetworkDevices'
 
 function App() {
   const [devices, setDevices] = useState([])
@@ -81,6 +82,7 @@ function App() {
       case 'all': return 'All Devices'
       case 'desktop': return 'System Units (Desktops)'
       case 'laptop': return 'Laptops'
+      case 'network-devices': return 'Network Devices'
       case 'settings': return 'Settings'
       default: return 'Dashboard'
     }
@@ -126,6 +128,8 @@ function App() {
 
             {activeTab === 'settings' ? (
               <Settings devices={devices} darkMode={darkMode} toggleTheme={toggleTheme} />
+            ) : activeTab === 'network-devices' ? (
+              <NetworkDevices darkMode={darkMode} />
             ) : (
               <div style={{
                 backgroundColor: darkMode ? '#1e1e1e' : 'white',
