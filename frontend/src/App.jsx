@@ -25,7 +25,7 @@ function App() {
 
   const fetchDevices = async () => {
     try {
-      const response = await fetch('http://10.10.6.56:8000/api/v1/devices?limit=1000')
+      const response = await fetch('/api/v1/devices?limit=1000')
       if (!response.ok) throw new Error('Failed to fetch devices')
       const data = await response.json()
       setDevices(data)

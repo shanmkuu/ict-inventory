@@ -38,7 +38,8 @@ You do **NOT** need to install Python on client machines.
     - Edit `deploy/config.json`:
       ```json
       {
-        "api_url": "http://YOUR_SERVER_IP:8000/api/v1/heartbeat",
+        "api_url": "cd frontend
+        /api/v1/heartbeat",
         "interval_seconds": 300
       }
       ```
@@ -65,3 +66,27 @@ If you want to modify the code:
     ```bash
     py build_agent.py
     ```
+
+## Server Migration / IP Change
+
+If the server's IP address changes (e.g. from `10.10.6.56` to `10.10.6.127`), follow these steps:
+
+### 1. Update New Deployments
+Modify `deploy/config.json` on the server so future installations use the new IP.
+
+### 2. Update Existing Agents
+On each client machine:
+1. Open `config.json` in the agent installation folder.
+2. Update `"api_url"` with the new IP address.
+3. Restart the machine (or kill/restart `agent.exe`).
+
+### 3. Update Frontend Display
+To update the "Server Address" shown in the Dashboard Settings:
+1. Edit `frontend/src/components/Settings.jsx`.
+2. Locate the server IP and update it.
+3. Rebuild the frontend:
+   ```bash
+   cd frontend
+   npm run build
+   ```
+4. Restart the backend server.

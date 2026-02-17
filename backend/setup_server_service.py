@@ -37,6 +37,16 @@ def install_server_task():
     print(f"  Program: {pythonw_exe}")
     print(f"  Args: {arguments}")
     print(f"  CWD: {project_root}")
+
+    # Add Firewall Rule
+    print("Configuring Windows Firewall for port 8000...")
+    firewall_cmd = [
+        'netsh', 'advfirewall', 'firewall', 'add', 'rule',
+        'name=ICT Inventory Server', 'dir=in', 'action=allow',
+        'protocol=TCP', 'localport=8000'
+    ]
+    subprocess.run(firewall_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    
     
     # schtasks command
     cmd = [
