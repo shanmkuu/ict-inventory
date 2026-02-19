@@ -1,7 +1,7 @@
 {
     "api_urls": [
-        "http://10.10.6.127:8000/api/v1/heartbeat",
-        "https://YOUR-CLOUDFLARE-TUNNEL-URL/api/v1/heartbeat"
+        "http://YOUR_SERVER_IP:8000/api/v1/heartbeat",
+        "https://YOUR-CLOUDFLARE_URL/api/v1/heartbeat"
     ],
     "api_key": "YOUR_API_KEY_HERE",
     "interval_seconds": 30,

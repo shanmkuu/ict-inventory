@@ -172,32 +172,65 @@ def get_system_info():
         "current_user": os.getlogin()
     }
 
+def send_heartbeat(config):
+    """
+    Sends a heartbeat to the configured API URLs.
+    Returns True if successful (at least one URL worked), False otherwise.
+    """
+    try:
+        logging.info("Collecting system information...")
+        data = get_system_info()
+        # Add API KEY if needed
+        headers = {"x-api-key": config.get("api_key")}
+        
+        # Support both sinlge 'api_url' and list 'api_urls'
+        api_urls = config.get("api_urls", [])
+        if config.get("api_url"):
+            api_urls.insert(0, config.get("api_url"))
+        
+        # Remove duplicates while preserving order
+        api_urls = list(dict.fromkeys(api_urls))
+
+        if not api_urls:
+            logging.error("No API URLs configured! Please set 'api_urls' or 'api_url' in config.json.")
+            return False
+
+        success = False
+        for url in api_urls:
+            try:
+                logging.info(f"Sending heartbeat to {url}...")
+                response = requests.post(url, json=data, headers=headers, timeout=10)
+                
+                if response.status_code == 200:
+                    logging.info(f"Heartbeat sent successfully to {url}. Status: {response.status_code}")
+                    return True
+                else:
+                    logging.error(f"Failed to send heartbeat to {url}. Status: {response.status_code}. Response: {response.text}")
+            except requests.exceptions.RequestException as e:
+                logging.warning(f"Connection failed to {url}: {e}")
+        
+        logging.error("Failed to send heartbeat to ALL configured URLs.")
+        return False
+
+    except Exception as e:
+        logging.error(f"Error during execution: {e}")
+        return False
+
 def run_agent():
     config = load_config()
-    api_url = config.get("api_url")
     interval = config.get("interval_seconds", 300)
     
+    # Log configuration (just once)
+    api_urls = config.get("api_urls", [])
+    if config.get("api_url"):
+        api_urls.insert(0, config.get("api_url"))
+    api_urls = list(dict.fromkeys(api_urls))
+    
     logging.info("Starting ICT Inventory Endpoint Agent...")
-    logging.info(f"Agent configured. Reporting to {api_url} every {interval} seconds.")
+    logging.info(f"Agent configured. Reporting to {api_urls} every {interval} seconds.")
 
     while True:
-        try:
-            logging.info("Collecting system information...")
-            data = get_system_info()
-            # Add API KEY if needed
-            headers = {"x-api-key": config.get("api_key")}
-            
-            logging.info("Sending heartbeat...")
-            response = requests.post(api_url, json=data, headers=headers)
-            
-            if response.status_code == 200:
-                logging.info(f"Heartbeat sent successfully. Status: {response.status_code}")
-            else:
-                logging.error(f"Failed to send heartbeat. Status: {response.status_code}. Response: {response.text}")
-                
-        except Exception as e:
-            logging.error(f"Error during execution: {e}")
-        
+        send_heartbeat(config)
         time.sleep(interval)
 
 if __name__ == "__main__":

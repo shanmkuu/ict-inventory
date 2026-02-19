@@ -74,28 +74,48 @@ async def run_scan_task(subnet: str):
             if not existing_dev:
                  existing_dev = scan_db.query(database.NetworkDevice).filter(database.NetworkDevice.ip_address == device_info["ip_address"]).first()
 
-            # FILTERING: User wants "networking devices only".
-            # We exclude "workstation" and "server" (unless user wants servers? usually 'networking devices' implies infra).
-            # We keep: switch, router, printer, camera, network_appliance.
-            # We exclude: workstation, unknown (unless it has SNMP data).
+            # FILTERING: User wants "networking devices only" + everything else EXCEPT computers/phones.
+            # We exclude "workstation", "server", "mobile", "computer".
+            # We keep: switch, router, printer, camera, network_appliance, projector, smart_tv, unknown policy.
             
             d_type = device_info.get("device_type", "unknown")
-            if d_type in ["workstation", "server"]:
-                # specific excludes
+            excluded_types = ["workstation", "server", "computer", "mobile", "phone", "tablet", "laptop", "desktop"]
+            
+            if d_type in excluded_types:
                 continue
             
-            # If unknown, we might want to skip if no interesting ports
-            if d_type == "unknown" and not device_info.get("raw_snmp_data"):
-                 # Skip purely unknown devices to reduce noise
-                 continue
+            # We used to filter out unknown devices if no SNMP, but user wants "everything else".
+            # So we include unknown devices now.
+            # if d_type == "unknown" and not device_info.get("raw_snmp_data"):
+            #      continue
 
             if existing_dev:
                 # Update
                 existing_dev.last_seen = datetime.now(timezone.utc)
                 existing_dev.system_status = "online"
-                if "hostname" in device_info: existing_dev.hostname = device_info["hostname"]
-                if "device_type" in device_info and device_info["device_type"] != "unknown": existing_dev.device_type = device_info["device_type"]
+                
+                # Update MAC if we found one and didn't have one before (or update it anyway)
+                if "mac_address" in device_info and device_info["mac_address"]:
+                    existing_dev.mac_address = device_info["mac_address"]
+
+                # Update Hostname if we found a good one
+                if "hostname" in device_info and device_info["hostname"]:
+                    # Don't overwrite a good name with an IP
+                    if existing_dev.hostname and "ip-" not in existing_dev.hostname and "ip-" in device_info["hostname"]:
+                        pass 
+                    else:
+                        existing_dev.hostname = device_info["hostname"]
+
+                # Update Device Type if we found a better one
+                if "device_type" in device_info and device_info["device_type"] != "unknown":
+                    # If we had a specific type, don't overwrite with generic 'network_appliance' unless we are sure
+                    if existing_dev.device_type != "unknown" and device_info["device_type"] == "network_appliance":
+                         pass
+                    else:
+                        existing_dev.device_type = device_info["device_type"]
+
                 if "open_ports" in device_info: existing_dev.open_ports = device_info["open_ports"]
+                if "vendor" in device_info and device_info["vendor"]: existing_dev.vendor = device_info["vendor"]
                 if "sys_name" in device_info: existing_dev.hostname = device_info["sys_name"]
             else:
                 # Create
