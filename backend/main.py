@@ -80,6 +80,16 @@ def read_device(device_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Device not found")
     return enrich_device_status(db_device)
 
+@app.delete("/api/v1/devices/{device_id}", status_code=204)
+def delete_device(device_id: str, db: Session = Depends(get_db)):
+    db_device = db.query(database.Device).filter(database.Device.device_id == device_id).first()
+    if db_device is None:
+        raise HTTPException(status_code=404, detail="Device not found")
+    
+    db.delete(db_device)
+    db.commit()
+    return None
+
 def enrich_device_status(device: database.Device) -> schemas.Device:
     """Helper to attach status based on last_seen."""
     # Convert SQLAlchemy model to Pydantic model compatible dict first? 

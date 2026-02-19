@@ -91,3 +91,32 @@ To update the "Server Address" shown in the Dashboard Settings:
    ```
 4. Restart the backend server.
 
+## 🚀 Easy Startup
+
+To launch the entire system (Backend Server + Frontend Dashboard) with a single click:
+
+1.  Locate `start_all.bat` in the project root folder.
+2.  **Double-click** it.
+3.  Two windows will open, and the dashboard will be accessible at your local network IP (e.g., `http://10.10.6.207:5173`).
+
+## 🗑️ Removing Devices
+
+You can remove devices that are no longer active in two ways:
+
+### 1. Via Dashboard
+-   Navigate to "All Devices" or "Network Devices".
+-   Click the **Delete** button in the "Actions" column.
+-   Confirm the deletion.
+
+### 2. Via Command Line (Cleanup Script)
+Use the `remove_device.py` script to remove a device by IP, Hostname, or ID.
+
+```bash
+# Example: Remove by IP
+python remove_device.py 192.168.1.50
+
+# Example: Remove by Hostname
+python remove_device.py old-laptop-name
+```
+
+

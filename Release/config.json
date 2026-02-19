@@ -1,5 +1,5 @@
 {
-    "api_url": "http://10.10.6.127:8000/api/v1/heartbeat",
+    "api_url": "http://10.10.6.207:8000/api/v1/heartbeat",
     "api_key": "YOUR_API_KEY_HERE",
     "interval_seconds": 30,
     "log_level": "INFO",

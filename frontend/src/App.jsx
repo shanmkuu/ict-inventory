@@ -67,14 +67,34 @@ function App() {
     return Array.from(map.values());
   }, [devices]);
 
+  const deleteDevice = async (id, e) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this device from the inventory?')) return;
+
+    try {
+      const response = await fetch(`/api/v1/devices/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete device');
+
+      // Update local state
+      setDevices(prevDevices => prevDevices.filter(d => d.device_id !== id));
+    } catch (err) {
+      alert('Error deleting device: ' + err.message);
+    }
+  }
+
   // Filtering Logic
-  const filteredDevices = uniqueDevices.filter(device => {
-    if (activeTab === 'dashboard' || activeTab === 'all') return true
-    if (activeTab === 'desktop') return device.system_type === 'Desktop'
-    if (activeTab === 'laptop') return device.system_type === 'Laptop'
-    // Add more filters as needed
-    return true
-  })
+  const filteredDevices = useMemo(() => {
+    return uniqueDevices.filter(device => {
+      if (activeTab === 'dashboard' || activeTab === 'all') return true
+      if (activeTab === 'desktop') return device.system_type === 'Desktop'
+      if (activeTab === 'laptop') return device.system_type === 'Laptop'
+      // Add more filters as needed
+      return true
+    })
+  }, [uniqueDevices, activeTab]) // Optimization: memoize filtering
 
   const getPageTitle = () => {
     switch (activeTab) {
@@ -173,6 +193,7 @@ function App() {
                       <th style={{ padding: '1rem', color: darkMode ? '#aaa' : '#616161', fontSize: '0.85rem', textTransform: 'uppercase' }}>Hardware (GPU / RAM / Disk)</th>
                       <th style={{ padding: '1rem', color: darkMode ? '#aaa' : '#616161', fontSize: '0.85rem', textTransform: 'uppercase' }}>Last Seen</th>
                       <th style={{ padding: '1rem', color: darkMode ? '#aaa' : '#616161', fontSize: '0.85rem', textTransform: 'uppercase' }}>Status</th>
+                      <th style={{ padding: '1rem', color: darkMode ? '#aaa' : '#616161', fontSize: '0.85rem', textTransform: 'uppercase' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -220,12 +241,28 @@ function App() {
                               {status}
                             </span>
                           </td>
+                          <td style={{ padding: '1rem' }}>
+                            <button
+                              onClick={(e) => deleteDevice(device.device_id, e)}
+                              style={{
+                                padding: '4px 8px',
+                                backgroundColor: '#FFEBEE',
+                                color: '#D32F2F',
+                                border: '1px solid #FFCDD2',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '0.75rem'
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </td>
                         </tr>
                       )
                     })}
                     {filteredDevices.length === 0 && (
                       <tr>
-                        <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: darkMode ? '#888' : '#9e9e9e' }}>
+                        <td colSpan="7" style={{ padding: '2rem', textAlign: 'center', color: darkMode ? '#888' : '#9e9e9e' }}>
                           No devices found for this category.
                         </td>
                       </tr>

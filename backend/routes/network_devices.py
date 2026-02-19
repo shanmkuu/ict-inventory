@@ -33,6 +33,16 @@ def read_network_device(device_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Network Device not found")
     return db_device
 
+@router.delete("/devices/{device_id}", status_code=204)
+def delete_network_device(device_id: int, db: Session = Depends(get_db)):
+    db_device = db.query(database.NetworkDevice).filter(database.NetworkDevice.id == device_id).first()
+    if db_device is None:
+        raise HTTPException(status_code=404, detail="Network Device not found")
+    
+    db.delete(db_device)
+    db.commit()
+    return None
+
 @router.post("/scan")
 async def start_network_scan(subnet: str, background_tasks: BackgroundTasks):
     """
