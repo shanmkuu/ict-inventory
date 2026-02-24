@@ -4,6 +4,9 @@ echo Starting ICT Inventory System...
 :: Start Backend
 start "ICT Inventory Backend" cmd /k "cd backend && python main.py"
 
+:: Start Backend (Uvicorn Reload)
+start "ICT Inventory Backend (Uvicorn)" cmd /k "py -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
+
 :: Wait a moment for backend to initialize
 timeout /t 5
 
@@ -14,7 +17,10 @@ start "ICT Inventory Frontend" cmd /k "cd frontend && npm run dev:host"
 timeout /t 5
 
 echo Opening Dashboard...
-start http://BlackHat-X.local:5173
+start http://blackhat-x.local:5173
+
+:: Start Agent
+start "ICT Inventory Agent" cmd /k "python agent.py"
 
 echo System starting...
 pause
