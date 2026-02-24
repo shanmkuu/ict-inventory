@@ -99,6 +99,7 @@ def update_device(
         raise HTTPException(status_code=404, detail="Device not found")
 
     changes = []
+    old_department = db_device.department  # capture before applying patch
     for field, value in patch.dict(exclude_none=True).items():
         old = getattr(db_device, field, None)
         if old != value:
@@ -107,6 +108,23 @@ def update_device(
 
     if changes:
         _write_audit(db, "DEVICE_UPDATED", db_device.device_id, db_device.hostname, admin, "; ".join(changes))
+
+    # Write to AssignmentHistory if department specifically changed
+    new_department = patch.dict(exclude_none=True).get('department')
+    if new_department is not None and new_department != old_department:
+        dept_record = database.AssignmentHistory(
+            device_id=db_device.device_id,
+            hostname=db_device.hostname,
+            serial_number=db_device.serial_number,
+            previous_user=old_department or '(none)',
+            new_user=new_department,
+            reassigned_at=datetime.now(timezone.utc),
+            admin_user=admin,
+            department=new_department,
+            reason=f"Department changed from '{old_department or 'none'}' to '{new_department}'",
+            record_type='DEPT_CHANGE',
+        )
+        db.add(dept_record)
 
     db.commit()
     db.refresh(db_device)

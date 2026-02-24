@@ -6,6 +6,8 @@ import Settings from './components/Settings'
 import NetworkDevices from './components/NetworkDevices'
 import Records from './components/Records'
 import ReassignModal from './components/ReassignModal'
+import SetDepartmentModal from './components/SetDepartmentModal'
+import Departments from './components/Departments'
 
 function App() {
   const [devices, setDevices] = useState([])
@@ -15,6 +17,10 @@ function App() {
 
   // Reassign modal state
   const [reassignTarget, setReassignTarget] = useState(null) // device object or null
+  // Department modal state
+  const [deptTarget, setDeptTarget] = useState(null) // device object or null
+  // All Devices dept filter
+  const [deptFilter, setDeptFilter] = useState('All')
 
   // Theme State
   const [darkMode, setDarkMode] = useState(() => {
@@ -70,17 +76,30 @@ function App() {
   // Filtering Logic
   const filteredDevices = useMemo(() => {
     return uniqueDevices.filter(device => {
-      if (activeTab === 'dashboard' || activeTab === 'all') return true
+      if (activeTab === 'dashboard' || activeTab === 'all') {
+        if (activeTab === 'all' && deptFilter !== 'All') {
+          return (device.department || '') === deptFilter
+        }
+        return true
+      }
       if (activeTab === 'desktop') return device.system_type === 'Desktop'
       if (activeTab === 'laptop') return device.system_type === 'Laptop'
       return true
     })
-  }, [uniqueDevices, activeTab])
+  }, [uniqueDevices, activeTab, deptFilter])
+
+  // Unique departments for filter dropdown (All Devices tab)
+  const uniqueDepartments = useMemo(() => {
+    const depts = new Set()
+    uniqueDevices.forEach(d => { if (d.department) depts.add(d.department) })
+    return ['All', ...Array.from(depts).sort()]
+  }, [uniqueDevices])
 
   const getPageTitle = () => {
     switch (activeTab) {
       case 'dashboard': return 'System Units Overview'
       case 'all': return 'All Devices'
+      case 'departments': return 'Departments'
       case 'desktop': return 'System Units (Desktops)'
       case 'laptop': return 'Laptops'
       case 'network-devices': return 'Network Devices'
@@ -108,6 +127,16 @@ function App() {
           device={reassignTarget}
           darkMode={darkMode}
           onClose={() => setReassignTarget(null)}
+          onSuccess={fetchDevices}
+        />
+      )}
+
+      {/* Set Department Modal */}
+      {deptTarget && (
+        <SetDepartmentModal
+          device={deptTarget}
+          darkMode={darkMode}
+          onClose={() => setDeptTarget(null)}
           onSuccess={fetchDevices}
         />
       )}
@@ -151,6 +180,8 @@ function App() {
               <NetworkDevices darkMode={darkMode} />
             ) : activeTab === 'records' ? (
               <Records darkMode={darkMode} />
+            ) : activeTab === 'departments' ? (
+              <Departments devices={uniqueDevices} darkMode={darkMode} />
             ) : (
               <div style={{
                 backgroundColor: darkMode ? '#1e1e1e' : 'white',
@@ -159,6 +190,46 @@ function App() {
                 overflow: 'hidden',
                 display: ['dashboard', 'all', 'desktop', 'laptop'].includes(activeTab) ? 'block' : 'none'
               }}>
+                {/* Department filter bar — All Devices tab only */}
+                {activeTab === 'all' && (
+                  <div style={{
+                    padding: '0.75rem 1rem',
+                    backgroundColor: darkMode ? '#252525' : '#fafafa',
+                    borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}`,
+                    display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap'
+                  }}>
+                    <span style={{ fontSize: '0.85rem', color: darkMode ? '#aaa' : '#666', fontWeight: 'bold' }}>Department:</span>
+                    <select
+                      value={deptFilter}
+                      onChange={e => setDeptFilter(e.target.value)}
+                      style={{
+                        padding: '5px 10px', borderRadius: '6px',
+                        border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                        backgroundColor: darkMode ? '#2c2c2c' : '#fff',
+                        color: darkMode ? '#e0e0e0' : '#333',
+                        fontSize: '0.875rem', cursor: 'pointer', outline: 'none'
+                      }}
+                    >
+                      {uniqueDepartments.map(d => (
+                        <option key={d} value={d}>{d === 'All' ? 'All Departments' : d}</option>
+                      ))}
+                    </select>
+                    {deptFilter !== 'All' && (
+                      <button
+                        onClick={() => setDeptFilter('All')}
+                        style={{
+                          padding: '4px 10px', borderRadius: '6px', border: 'none',
+                          backgroundColor: darkMode ? '#333' : '#eee',
+                          color: darkMode ? '#ccc' : '#666',
+                          cursor: 'pointer', fontSize: '0.8rem'
+                        }}
+                      >Clear</button>
+                    )}
+                    <span style={{ fontSize: '0.8rem', color: darkMode ? '#666' : '#aaa', marginLeft: 'auto' }}>
+                      {filteredDevices.length} device{filteredDevices.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                )}
                 {/* Device Counts Summary */}
                 <div style={{
                   padding: '1rem',
@@ -187,7 +258,7 @@ function App() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead style={{ backgroundColor: darkMode ? '#2c2c2c' : '#f5f5f5', borderBottom: `2px solid ${darkMode ? '#444' : '#e0e0e0'}` }}>
                     <tr>
-                      {['Hostname', 'User', 'IP / OS', 'Hardware', 'Status', 'Asset Status', 'Last Seen', 'Actions'].map(h => (
+                      {['Hostname', 'User', 'Department', 'IP / OS / MAC', 'Hardware', 'Status', 'Asset Status', 'Last Seen', 'Actions'].map(h => (
                         <th key={h} style={{ padding: '1rem', color: darkMode ? '#aaa' : '#616161', fontSize: '0.85rem', textTransform: 'uppercase' }}>{h}</th>
                       ))}
                     </tr>
@@ -208,9 +279,28 @@ function App() {
                             <div style={{ fontSize: '0.8rem', color: '#9e9e9e' }}>{device.system_type || 'Unknown'}</div>
                           </td>
                           <td style={{ padding: '1rem', color: darkMode ? '#bbb' : '#616161' }}>{device.current_user || '—'}</td>
+                          <td style={{ padding: '0.75rem 1rem' }}>
+                            {device.department ? (
+                              <span style={{
+                                backgroundColor: darkMode ? '#1a2a3a' : '#E3F2FD',
+                                color: '#1976D2',
+                                padding: '3px 8px', borderRadius: '10px',
+                                fontSize: '0.75rem', fontWeight: 'bold', whiteSpace: 'nowrap'
+                              }}>
+                                {device.department}
+                              </span>
+                            ) : (
+                              <span style={{ color: darkMode ? '#555' : '#bbb', fontSize: '0.85rem' }}>—</span>
+                            )}
+                          </td>
                           <td style={{ padding: '1rem', color: darkMode ? '#bbb' : '#616161' }}>
                             <div>{device.ip_address}</div>
                             <div style={{ fontSize: '0.8rem', color: '#9e9e9e' }}>{device.os_name} {device.os_release}</div>
+                            {device.mac_address && (
+                              <div style={{ fontSize: '0.75rem', color: darkMode ? '#666' : '#bdbdbd', fontFamily: 'monospace', marginTop: '2px' }}>
+                                {device.mac_address}
+                              </div>
+                            )}
                           </td>
                           <td style={{ padding: '1rem', color: darkMode ? '#bbb' : '#616161' }}>
                             <div style={{ fontSize: '0.9rem', color: darkMode ? '#ddd' : '#424242' }}>{device.gpu_model || 'No GPU Info'}</div>
@@ -239,28 +329,47 @@ function App() {
                             <div style={{ fontSize: '0.8rem', color: '#9e9e9e' }}>{lastSeenDate.toLocaleDateString()}</div>
                           </td>
                           <td style={{ padding: '1rem' }}>
-                            <button
-                              onClick={() => setReassignTarget(device)}
-                              style={{
-                                padding: '4px 12px',
-                                backgroundColor: darkMode ? '#2c3e2e' : '#E8F5E9',
-                                color: '#2E7D32',
-                                border: '1px solid #A5D6A7',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                fontSize: '0.78rem',
-                                fontWeight: 'bold'
-                              }}
-                            >
-                              Reassign
-                            </button>
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                              <button
+                                onClick={() => setReassignTarget(device)}
+                                style={{
+                                  padding: '4px 10px',
+                                  backgroundColor: darkMode ? '#2c3e2e' : '#E8F5E9',
+                                  color: '#2E7D32',
+                                  border: '1px solid #A5D6A7',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 'bold'
+                                }}
+                              >
+                                Reassign
+                              </button>
+                              {activeTab === 'dashboard' && (
+                                <button
+                                  onClick={() => setDeptTarget(device)} // Added Edit Dept button
+                                  style={{
+                                    padding: '4px 10px',
+                                    backgroundColor: darkMode ? '#1a2a3a' : '#E3F2FD',
+                                    color: '#1976D2',
+                                    border: '1px solid #90CAF9',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 'bold'
+                                  }}
+                                >
+                                  Edit Dept
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       )
                     })}
                     {filteredDevices.length === 0 && (
                       <tr>
-                        <td colSpan="8" style={{ padding: '2rem', textAlign: 'center', color: darkMode ? '#888' : '#9e9e9e' }}>
+                        <td colSpan="9" style={{ padding: '2rem', textAlign: 'center', color: darkMode ? '#888' : '#9e9e9e' }}>
                           No devices found for this category.
                         </td>
                       </tr>

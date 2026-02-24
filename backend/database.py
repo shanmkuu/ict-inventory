@@ -56,6 +56,7 @@ class AssignmentHistory(Base):
     admin_user = Column(String)
     department = Column(String, nullable=True)
     reason = Column(Text, nullable=True)
+    record_type = Column(String, default='REASSIGN')  # REASSIGN | DEPT_CHANGE
 
 
 class AuditLog(Base):
@@ -92,7 +93,7 @@ class NetworkDevice(Base):
 
 def _migrate_add_columns(connection):
     """Non-destructively add new columns to the devices table if they don't exist."""
-    new_cols = [
+    new_cols_devices = [
         ("serial_number", "VARCHAR"),
         ("asset_tag", "VARCHAR"),
         ("department", "VARCHAR"),
@@ -100,11 +101,25 @@ def _migrate_add_columns(connection):
         ("purchase_date", "VARCHAR"),
         ("warranty_expiry", "VARCHAR"),
     ]
-    for col_name, col_type in new_cols:
+    for col_name, col_type in new_cols_devices:
         try:
             connection.execute(
                 __import__('sqlalchemy').text(
                     f"ALTER TABLE devices ADD COLUMN {col_name} {col_type}"
+                )
+            )
+        except Exception:
+            pass  # Column already exists
+
+    # Migrate assignment_history table
+    new_cols_history = [
+        ("record_type", "VARCHAR DEFAULT 'REASSIGN'"),
+    ]
+    for col_name, col_type in new_cols_history:
+        try:
+            connection.execute(
+                __import__('sqlalchemy').text(
+                    f"ALTER TABLE assignment_history ADD COLUMN {col_name} {col_type}"
                 )
             )
         except Exception:
@@ -115,6 +130,5 @@ def init_db():
     # Create all tables (non-destructive)
     Base.metadata.create_all(bind=engine)
     # Run migration for new columns on existing devices table
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         _migrate_add_columns(conn)
-        conn.commit()

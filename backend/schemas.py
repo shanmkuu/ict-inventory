@@ -78,6 +78,7 @@ class AssignmentHistoryOut(BaseModel):
     admin_user: str
     department: Optional[str] = None
     reason: Optional[str] = None
+    record_type: str = 'REASSIGN'  # REASSIGN | DEPT_CHANGE
 
     class Config:
         from_attributes = True

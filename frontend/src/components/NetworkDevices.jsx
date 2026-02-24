@@ -51,33 +51,12 @@ const NetworkDevices = ({ darkMode }) => {
         }
     };
 
-    const deleteDevice = async (id, e) => {
-        if (e) e.stopPropagation();
-        if (!window.confirm('Are you sure you want to delete this device? This action cannot be undone.')) return;
-
-        try {
-            const response = await fetch(`/api/v1/network/devices/${id}`, {
-                method: 'DELETE',
-            });
-
-            if (!response.ok) throw new Error('Failed to delete device');
-
-            // Remove from local state
-            setDevices(devices.filter(d => d.id !== id));
-            if (selectedDevice && selectedDevice.id === id) {
-                setSelectedDevice(null);
-            }
-        } catch (err) {
-            alert('Error deleting device: ' + err.message);
-        }
-    };
 
     if (selectedDevice) {
         return (
             <DeviceDetails
                 device={selectedDevice}
                 onBack={() => setSelectedDevice(null)}
-                onDelete={(id) => deleteDevice(id)}
                 darkMode={darkMode}
             />
         );
@@ -169,7 +148,6 @@ const NetworkDevices = ({ darkMode }) => {
                                 <th style={{ padding: '1rem' }}>MAC</th>
                                 <th style={{ padding: '1rem' }}>Open Ports</th>
                                 <th style={{ padding: '1rem' }}>Status</th>
-                                <th style={{ padding: '1rem' }}>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -203,27 +181,11 @@ const NetworkDevices = ({ darkMode }) => {
                                     <td style={{ padding: '1rem' }}>
                                         <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>Online</span>
                                     </td>
-                                    <td style={{ padding: '1rem' }}>
-                                        <button
-                                            onClick={(e) => deleteDevice(device.id, e)}
-                                            style={{
-                                                padding: '4px 8px',
-                                                backgroundColor: '#FFEBEE',
-                                                color: '#D32F2F',
-                                                border: '1px solid #FFCDD2',
-                                                borderRadius: '4px',
-                                                cursor: 'pointer',
-                                                fontSize: '0.8rem'
-                                            }}
-                                        >
-                                            Delete
-                                        </button>
-                                    </td>
                                 </tr>
                             ))}
                             {devices.length === 0 && (
                                 <tr>
-                                    <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>
+                                    <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>
                                         No network devices found. Click "Scan Network" to discover devices.
                                     </td>
                                 </tr>
@@ -236,7 +198,7 @@ const NetworkDevices = ({ darkMode }) => {
     );
 };
 
-const DeviceDetails = ({ device, onBack, onDelete, darkMode }) => {
+const DeviceDetails = ({ device, onBack, darkMode }) => {
     // Parse open ports and snmp data safely
     let openPorts = [];
     let snmpData = {};
@@ -245,23 +207,9 @@ const DeviceDetails = ({ device, onBack, onDelete, darkMode }) => {
 
     return (
         <div style={{ color: darkMode ? '#e0e0e0' : '#333' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <div style={{ marginBottom: '1rem' }}>
                 <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#4CAF50', cursor: 'pointer', fontWeight: 'bold' }}>
                     ← Back to List
-                </button>
-                <button
-                    onClick={() => onDelete(device.id)}
-                    style={{
-                        padding: '8px 16px',
-                        backgroundColor: '#FFEBEE',
-                        color: '#D32F2F',
-                        border: '1px solid #FFCDD2',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontWeight: 'bold'
-                    }}
-                >
-                    Delete Device
                 </button>
             </div>
             <div style={{ padding: '1rem', backgroundColor: darkMode ? '#1e1e1e' : 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>

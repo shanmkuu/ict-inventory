@@ -17,6 +17,7 @@ const Records = ({ darkMode }) => {
     const [filterDept, setFilterDept] = useState('')
     const [filterDateFrom, setFilterDateFrom] = useState('')
     const [filterDateTo, setFilterDateTo] = useState('')
+    const [filterType, setFilterType] = useState('All') // All | REASSIGN | DEPT_CHANGE
 
     const bg = darkMode ? '#1e1e1e' : '#fff'
     const surfaceBg = darkMode ? '#252525' : '#f5f5f5'
@@ -60,9 +61,11 @@ const Records = ({ darkMode }) => {
     const clearFilters = () => {
         setFilterDevice(''); setFilterUser(''); setFilterDept('')
         setFilterDateFrom(''); setFilterDateTo(''); setSearch('')
+        setFilterType('All')
     }
 
     const displayed = records.filter(r => {
+        if (filterType !== 'All' && r.record_type !== filterType) return false
         if (!search) return true
         const s = search.toLowerCase()
         return (
@@ -86,13 +89,19 @@ const Records = ({ darkMode }) => {
             {/* Stats row */}
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
                 <div style={{ backgroundColor: bg, borderRadius: '8px', padding: '1rem 1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', flex: 1, minWidth: '140px' }}>
-                    <div style={{ fontSize: '0.8rem', color: muted, textTransform: 'uppercase' }}>Total Reassignments</div>
+                    <div style={{ fontSize: '0.8rem', color: muted, textTransform: 'uppercase' }}>Total Records</div>
                     <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#4CAF50' }}>{records.length}</div>
                 </div>
                 <div style={{ backgroundColor: bg, borderRadius: '8px', padding: '1rem 1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', flex: 1, minWidth: '140px' }}>
-                    <div style={{ fontSize: '0.8rem', color: muted, textTransform: 'uppercase' }}>Unique Devices</div>
+                    <div style={{ fontSize: '0.8rem', color: muted, textTransform: 'uppercase' }}>Reassignments</div>
                     <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#2196F3' }}>
-                        {new Set(records.map(r => r.device_id)).size}
+                        {records.filter(r => r.record_type === 'REASSIGN' || !r.record_type).length}
+                    </div>
+                </div>
+                <div style={{ backgroundColor: bg, borderRadius: '8px', padding: '1rem 1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', flex: 1, minWidth: '140px' }}>
+                    <div style={{ fontSize: '0.8rem', color: muted, textTransform: 'uppercase' }}>Dept. Changes</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#1976D2' }}>
+                        {records.filter(r => r.record_type === 'DEPT_CHANGE').length}
                     </div>
                 </div>
                 <div style={{ backgroundColor: bg, borderRadius: '8px', padding: '1rem 1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', flex: 1, minWidth: '140px' }}>
@@ -117,6 +126,21 @@ const Records = ({ darkMode }) => {
                     </button>
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    {/* Record type quick filter */}
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', width: '100%', marginBottom: '0.5rem' }}>
+                        {['All', 'REASSIGN', 'DEPT_CHANGE'].map(t => (
+                            <button key={t} onClick={() => setFilterType(t)} style={{
+                                padding: '4px 12px', borderRadius: '12px', border: 'none', cursor: 'pointer',
+                                fontSize: '0.78rem', fontWeight: filterType === t ? 'bold' : 'normal',
+                                backgroundColor: filterType === t
+                                    ? (t === 'DEPT_CHANGE' ? '#1976D2' : t === 'REASSIGN' ? '#4CAF50' : (darkMode ? '#444' : '#555'))
+                                    : (darkMode ? '#2a2a2a' : '#eee'),
+                                color: filterType === t ? 'white' : muted,
+                            }}>
+                                {t === 'All' ? 'All Records' : t === 'REASSIGN' ? 'User Reassignments' : 'Dept. Changes'}
+                            </button>
+                        ))}
+                    </div>
                     <div style={{ position: 'relative', flex: '2', minWidth: '200px' }}>
                         <Search size={14} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: muted }} />
                         <input
@@ -159,7 +183,7 @@ const Records = ({ darkMode }) => {
                         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                             <thead style={{ backgroundColor: surfaceBg, borderBottom: `2px solid ${border}` }}>
                                 <tr>
-                                    {['Device', 'Serial No.', 'Previous User', 'New User', 'Date & Time', 'Admin', 'Department', 'Reason'].map(h => (
+                                    {['Type', 'Device', 'Serial No.', 'Previous User / Dept', 'New User / Dept', 'Date & Time', 'Admin', 'Department', 'Reason'].map(h => (
                                         <th key={h} style={{ padding: '0.85rem 1rem', color: muted, fontSize: '0.78rem', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                                             {h}
                                         </th>
@@ -167,42 +191,57 @@ const Records = ({ darkMode }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {displayed.map((r, i) => (
-                                    <tr key={r.id} style={{
-                                        borderBottom: `1px solid ${border}`,
-                                        backgroundColor: i % 2 === 0 ? 'transparent' : (darkMode ? '#1a1a1a' : '#fafafa')
-                                    }}>
-                                        <td style={{ padding: '0.85rem 1rem' }}>
-                                            <div style={{ fontWeight: 'bold', color: text }}>{r.hostname || r.device_id}</div>
-                                            <div style={{ fontSize: '0.75rem', color: muted }}>{r.device_id}</div>
-                                        </td>
-                                        <td style={{ padding: '0.85rem 1rem', color: muted, fontSize: '0.85rem' }}>{r.serial_number || '—'}</td>
-                                        <td style={{ padding: '0.85rem 1rem' }}>
-                                            <span style={{
-                                                backgroundColor: darkMode ? '#3c2c2c' : '#FFEBEE', color: '#C62828',
-                                                padding: '2px 8px', borderRadius: '10px', fontSize: '0.8rem'
-                                            }}>
-                                                {r.previous_user || '(unassigned)'}
-                                            </span>
-                                        </td>
-                                        <td style={{ padding: '0.85rem 1rem' }}>
-                                            <span style={{
-                                                backgroundColor: darkMode ? '#2c3e2e' : '#E8F5E9', color: '#2E7D32',
-                                                padding: '2px 8px', borderRadius: '10px', fontSize: '0.8rem'
-                                            }}>
-                                                {r.new_user}
-                                            </span>
-                                        </td>
-                                        <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: text, whiteSpace: 'nowrap' }}>
-                                            {new Date(r.reassigned_at + (r.reassigned_at.endsWith('Z') ? '' : 'Z')).toLocaleString()}
-                                        </td>
-                                        <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: text }}>{r.admin_user}</td>
-                                        <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: muted }}>{r.department || '—'}</td>
-                                        <td style={{ padding: '0.85rem 1rem', fontSize: '0.82rem', color: muted, maxWidth: '200px' }}>
-                                            {r.reason || <span style={{ fontStyle: 'italic' }}>—</span>}
-                                        </td>
-                                    </tr>
-                                ))}
+                                {displayed.map((r, i) => {
+                                    const isDept = r.record_type === 'DEPT_CHANGE'
+                                    return (
+                                        <tr key={r.id} style={{
+                                            borderBottom: `1px solid ${border}`,
+                                            backgroundColor: i % 2 === 0 ? 'transparent' : (darkMode ? '#1a1a1a' : '#fafafa')
+                                        }}>
+                                            {/* Type badge */}
+                                            <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
+                                                <span style={{
+                                                    backgroundColor: isDept ? (darkMode ? '#1a2a3a' : '#E3F2FD') : (darkMode ? '#2c3e2e' : '#E8F5E9'),
+                                                    color: isDept ? '#1976D2' : '#2E7D32',
+                                                    padding: '3px 8px', borderRadius: '10px', fontSize: '0.73rem', fontWeight: 'bold'
+                                                }}>
+                                                    {isDept ? '🏢 Dept. Change' : '👤 Reassignment'}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '0.85rem 1rem' }}>
+                                                <div style={{ fontWeight: 'bold', color: text }}>{r.hostname || r.device_id}</div>
+                                                <div style={{ fontSize: '0.75rem', color: muted }}>{r.device_id}</div>
+                                            </td>
+                                            <td style={{ padding: '0.85rem 1rem', color: muted, fontSize: '0.85rem' }}>{r.serial_number || '—'}</td>
+                                            <td style={{ padding: '0.85rem 1rem' }}>
+                                                <span style={{
+                                                    backgroundColor: isDept ? (darkMode ? '#2a2a3a' : '#EEF2FF') : (darkMode ? '#3c2c2c' : '#FFEBEE'),
+                                                    color: isDept ? '#5C6BC0' : '#C62828',
+                                                    padding: '2px 8px', borderRadius: '10px', fontSize: '0.8rem'
+                                                }}>
+                                                    {r.previous_user || '(none)'}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '0.85rem 1rem' }}>
+                                                <span style={{
+                                                    backgroundColor: isDept ? (darkMode ? '#1a2a3a' : '#E3F2FD') : (darkMode ? '#2c3e2e' : '#E8F5E9'),
+                                                    color: isDept ? '#1976D2' : '#2E7D32',
+                                                    padding: '2px 8px', borderRadius: '10px', fontSize: '0.8rem'
+                                                }}>
+                                                    {r.new_user}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: text, whiteSpace: 'nowrap' }}>
+                                                {new Date(r.reassigned_at + (r.reassigned_at.endsWith('Z') ? '' : 'Z')).toLocaleString()}
+                                            </td>
+                                            <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: text }}>{r.admin_user}</td>
+                                            <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: muted }}>{r.department || '—'}</td>
+                                            <td style={{ padding: '0.85rem 1rem', fontSize: '0.82rem', color: muted, maxWidth: '200px' }}>
+                                                {r.reason || <span style={{ fontStyle: 'italic' }}>—</span>}
+                                            </td>
+                                        </tr>
+                                    )
+                                })}
                             </tbody>
                         </table>
                     </div>

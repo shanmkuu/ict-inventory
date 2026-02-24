@@ -144,6 +144,27 @@ def get_system_type():
         pass
     return "Unknown"
 
+def get_mac_address():
+    """Get the primary network interface MAC address using psutil."""
+    import psutil
+    AF_LINK = psutil.AF_LINK  # platform-agnostic constant for hardware addresses
+    try:
+        interfaces = psutil.net_if_addrs()
+        for iface_name, addrs in interfaces.items():
+            # Skip loopback and virtual/tunneling adapters
+            lower = iface_name.lower()
+            if any(skip in lower for skip in ('loopback', 'lo', 'vethernet', 'vmware', 'virtualbox', 'pseudo', 'teredo')):
+                continue
+            for addr in addrs:
+                if addr.family == AF_LINK and addr.address and addr.address != '00-00-00-00-00-00':
+                    return addr.address.upper()
+    except Exception:
+        pass
+    # Fallback: uuid.getnode()
+    node = uuid.getnode()
+    return '-'.join(['{:02X}'.format((node >> ele) & 0xff) for ele in range(0, 8*6, 8)][::-1])
+
+
 def get_system_info():
     try:
         boot_time_timestamp = psutil.boot_time()
@@ -156,7 +177,7 @@ def get_system_info():
         "device_id": str(uuid.getnode()),
         "hostname": socket.gethostname(),
         "ip_address": socket.gethostbyname(socket.gethostname()),
-        "mac_address": '-'.join(['{:02x}'.format((uuid.getnode() >> ele) & 0xff) for ele in range(0,8*6,8)][::-1]),
+        "mac_address": get_mac_address(),
         "os_name": platform.system(),
         "os_version": platform.version(),
         "os_release": platform.release(),
@@ -171,6 +192,7 @@ def get_system_info():
         "boot_time": boot_time,
         "current_user": os.getlogin()
     }
+
 
 def send_heartbeat(config):
     """
