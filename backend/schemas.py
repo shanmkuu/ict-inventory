@@ -1,6 +1,9 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
+
+
+# ── Device ────────────────────────────────────────────────────────────────────
 
 class DeviceBase(BaseModel):
     device_id: str
@@ -21,17 +24,81 @@ class DeviceBase(BaseModel):
     boot_time: Optional[str] = None
     current_user: Optional[str] = None
     timestamp: Optional[str] = None
+    # Lifecycle fields
+    serial_number: Optional[str] = None
+    asset_tag: Optional[str] = None
+    department: Optional[str] = None
+    asset_status: Optional[str] = "Assigned"
+    purchase_date: Optional[str] = None
+    warranty_expiry: Optional[str] = None
+
 
 class DeviceCreate(DeviceBase):
     pass
 
+
+class DevicePatch(BaseModel):
+    """For PATCH /devices/{id} – all fields optional."""
+    serial_number: Optional[str] = None
+    asset_tag: Optional[str] = None
+    department: Optional[str] = None
+    asset_status: Optional[str] = None   # Available / Assigned / Under Repair / Retired
+    purchase_date: Optional[str] = None
+    warranty_expiry: Optional[str] = None
+    current_user: Optional[str] = None
+
+
 class Device(DeviceBase):
     id: int
     last_seen: datetime
-    status: str = "offline" # Computed field
+    status: str = "offline"  # Computed field (online/offline/unused)
 
     class Config:
         from_attributes = True
+
+
+# ── Reassign ──────────────────────────────────────────────────────────────────
+
+class ReassignRequest(BaseModel):
+    new_user: str
+    admin_user: str
+    reason: Optional[str] = None
+
+
+# ── Assignment History ────────────────────────────────────────────────────────
+
+class AssignmentHistoryOut(BaseModel):
+    id: int
+    device_id: str
+    hostname: Optional[str] = None
+    serial_number: Optional[str] = None
+    previous_user: Optional[str] = None
+    new_user: str
+    reassigned_at: datetime
+    admin_user: str
+    department: Optional[str] = None
+    reason: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ── Audit Log ────────────────────────────────────────────────────────────────
+
+class AuditLogOut(BaseModel):
+    id: int
+    action: str
+    device_id: Optional[str] = None
+    hostname: Optional[str] = None
+    performed_by: str
+    timestamp: datetime
+    detail: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ── Network Device ────────────────────────────────────────────────────────────
 
 class NetworkDeviceBase(BaseModel):
     ip_address: str
@@ -45,11 +112,13 @@ class NetworkDeviceBase(BaseModel):
     uptime: Optional[str] = None
     firmware_version: Optional[str] = None
     system_status: Optional[str] = "offline"
-    open_ports: Optional[str] = "[]" # JSON string
-    raw_snmp_data: Optional[str] = "{}" # JSON string
+    open_ports: Optional[str] = "[]"
+    raw_snmp_data: Optional[str] = "{}"
+
 
 class NetworkDeviceCreate(NetworkDeviceBase):
     pass
+
 
 class NetworkDevice(NetworkDeviceBase):
     id: int

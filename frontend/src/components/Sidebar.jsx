@@ -1,16 +1,14 @@
 import React from 'react'
-import { LayoutDashboard, Monitor, Laptop, Server, Printer, Settings, Network } from 'lucide-react'
+import { LayoutDashboard, Monitor, Laptop, Server, Settings, Network, ClipboardList } from 'lucide-react'
 
 const Sidebar = ({ activeTab, onTabChange, darkMode }) => {
     const menuItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-
         { id: 'all', label: 'All Devices', icon: Server },
-        { id: 'desktop', label: 'System Units', icon: Monitor }, // Filter: System Type = Desktop
-        { id: 'laptop', label: 'Laptops', icon: Laptop }, // Filter: System Type = Laptop
-        // { id: 'mac', label: 'Mac Desktops', icon: Monitor }, // Placeholder for future
-
+        { id: 'desktop', label: 'System Units', icon: Monitor },
+        { id: 'laptop', label: 'Laptops', icon: Laptop },
         { id: 'network-devices', label: 'Network Devices', icon: Network },
+        { id: 'records', label: 'Records', icon: ClipboardList },
         { id: 'settings', label: 'Settings', icon: Settings },
     ]
 
