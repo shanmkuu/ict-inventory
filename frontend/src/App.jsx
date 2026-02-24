@@ -243,14 +243,14 @@ function App() {
                     <span style={{ fontWeight: 'bold', color: '#4CAF50' }}>Online:</span>{' '}
                     {filteredDevices.filter(d => {
                       const dateStr = d.last_seen.endsWith('Z') ? d.last_seen : d.last_seen + 'Z'
-                      return (new Date() - new Date(dateStr)) < 300000
+                      return (new Date() - new Date(dateStr)) < 600000  // 10 min threshold
                     }).length}
                   </div>
                   <div>
                     <span style={{ fontWeight: 'bold', color: '#BDBDBD' }}>Offline:</span>{' '}
                     {filteredDevices.filter(d => {
                       const dateStr = d.last_seen.endsWith('Z') ? d.last_seen : d.last_seen + 'Z'
-                      return (new Date() - new Date(dateStr)) >= 300000
+                      return (new Date() - new Date(dateStr)) >= 600000
                     }).length}
                   </div>
                 </div>
@@ -268,7 +268,7 @@ function App() {
                       const dateStr = device.last_seen.endsWith('Z') ? device.last_seen : device.last_seen + 'Z'
                       const lastSeenDate = new Date(dateStr)
                       const diffMs = new Date() - lastSeenDate
-                      const isOnline = diffMs < 60000 * 5
+                      const isOnline = diffMs < 600000  // 10 min threshold
                       const statusColor = isOnline ? '#4CAF50' : '#BDBDBD'
                       const asc = assetStatusColor(device.asset_status)
 

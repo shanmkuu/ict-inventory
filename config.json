@@ -1,5 +1,6 @@
 {
     "api_urls": [
+        "http://BlackHat-X.local:8000/api/v1/heartbeat",
         "http://10.10.6.127:8000/api/v1/heartbeat",
         "https://YOUR-CLOUDFLARE-TUNNEL-URL/api/v1/heartbeat"
     ],
