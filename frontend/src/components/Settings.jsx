@@ -65,7 +65,7 @@ const Settings = ({ devices, darkMode, toggleTheme }) => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
                     <div>
                         <div style={{ fontSize: '0.85rem', color: darkMode ? '#aaa' : '#666' }}>Server Address</div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: darkMode ? '#e0e0e0' : '#333' }}>10.10.6.127</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: darkMode ? '#e0e0e0' : '#333' }}>blackhat-x.local:5173/</div>
                     </div>
                     <div>
                         <div style={{ fontSize: '0.85rem', color: darkMode ? '#aaa' : '#666' }}>Port</div>

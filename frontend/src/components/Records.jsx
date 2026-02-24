@@ -125,9 +125,9 @@ const Records = ({ darkMode }) => {
                         <X size={13} /> Clear
                     </button>
                 </div>
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
                     {/* Record type quick filter */}
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', width: '100%', marginBottom: '0.5rem' }}>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
                         {['All', 'REASSIGN', 'DEPT_CHANGE'].map(t => (
                             <button key={t} onClick={() => setFilterType(t)} style={{
                                 padding: '4px 12px', borderRadius: '12px', border: 'none', cursor: 'pointer',
@@ -136,12 +136,13 @@ const Records = ({ darkMode }) => {
                                     ? (t === 'DEPT_CHANGE' ? '#1976D2' : t === 'REASSIGN' ? '#4CAF50' : (darkMode ? '#444' : '#555'))
                                     : (darkMode ? '#2a2a2a' : '#eee'),
                                 color: filterType === t ? 'white' : muted,
+                                whiteSpace: 'nowrap'
                             }}>
                                 {t === 'All' ? 'All Records' : t === 'REASSIGN' ? 'User Reassignments' : 'Dept. Changes'}
                             </button>
                         ))}
                     </div>
-                    <div style={{ position: 'relative', flex: '2', minWidth: '200px' }}>
+                    <div style={{ position: 'relative', flex: '1', minWidth: '200px' }}>
                         <Search size={14} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: muted }} />
                         <input
                             value={search}
@@ -150,10 +151,10 @@ const Records = ({ darkMode }) => {
                             style={{ ...inputStyle, width: '100%', paddingLeft: '28px', boxSizing: 'border-box' }}
                         />
                     </div>
-                    <input value={filterUser} onChange={e => setFilterUser(e.target.value)} placeholder="Filter by user…" style={{ ...inputStyle, flex: 1, minWidth: '130px' }} />
-                    <input value={filterDept} onChange={e => setFilterDept(e.target.value)} placeholder="Filter by dept…" style={{ ...inputStyle, flex: 1, minWidth: '130px' }} />
-                    <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} style={{ ...inputStyle }} title="Date From" />
-                    <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} style={{ ...inputStyle }} title="Date To" />
+                    <input value={filterUser} onChange={e => setFilterUser(e.target.value)} placeholder="User…" style={{ ...inputStyle, width: '100px' }} />
+                    <input value={filterDept} onChange={e => setFilterDept(e.target.value)} placeholder="Dept…" style={{ ...inputStyle, width: '100px' }} />
+                    <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} style={{ ...inputStyle, width: '120px' }} title="From" />
+                    <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} style={{ ...inputStyle, width: '120px' }} title="To" />
                     <button onClick={fetchRecords} style={{
                         padding: '0.45rem 1rem', borderRadius: '6px', backgroundColor: '#4CAF50',
                         color: 'white', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold'
@@ -164,7 +165,7 @@ const Records = ({ darkMode }) => {
                         color: text, cursor: 'pointer', fontSize: '0.85rem',
                         display: 'flex', alignItems: 'center', gap: '6px'
                     }}>
-                        <Download size={14} /> Export CSV
+                        <Download size={14} /> Export
                     </button>
                 </div>
             </div>

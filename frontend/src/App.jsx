@@ -8,6 +8,7 @@ import Records from './components/Records'
 import ReassignModal from './components/ReassignModal'
 import SetDepartmentModal from './components/SetDepartmentModal'
 import Departments from './components/Departments'
+import Footer from './components/Footer'
 
 function App() {
   const [devices, setDevices] = useState([])
@@ -145,7 +146,13 @@ function App() {
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} darkMode={darkMode} />
 
       {/* Main Content */}
-      <div style={{ marginLeft: '250px', flex: 1, padding: '2rem' }}>
+      <div style={{
+        marginLeft: '250px',
+        width: 'calc(100% - 250px)',
+        minHeight: '100vh',
+        padding: '2rem',
+        boxSizing: 'border-box'
+      }}>
 
         {/* Header */}
         <div style={{ marginBottom: '2rem' }}>
@@ -255,131 +262,134 @@ function App() {
                   </div>
                 </div>
 
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                  <thead style={{ backgroundColor: darkMode ? '#2c2c2c' : '#f5f5f5', borderBottom: `2px solid ${darkMode ? '#444' : '#e0e0e0'}` }}>
-                    <tr>
-                      {['Hostname', 'User', 'Department', 'IP / OS / MAC', 'Hardware', 'Status', 'Asset Status', 'Last Seen', 'Actions'].map(h => (
-                        <th key={h} style={{ padding: '1rem', color: darkMode ? '#aaa' : '#616161', fontSize: '0.85rem', textTransform: 'uppercase' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredDevices.map((device) => {
-                      const dateStr = device.last_seen.endsWith('Z') ? device.last_seen : device.last_seen + 'Z'
-                      const lastSeenDate = new Date(dateStr)
-                      const diffMs = new Date() - lastSeenDate
-                      const isOnline = diffMs < 600000  // 10 min threshold
-                      const statusColor = isOnline ? '#4CAF50' : '#BDBDBD'
-                      const asc = assetStatusColor(device.asset_status)
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead style={{ backgroundColor: darkMode ? '#2c2c2c' : '#f5f5f5', borderBottom: `2px solid ${darkMode ? '#444' : '#e0e0e0'}` }}>
+                      <tr>
+                        {['Hostname', 'User', 'Department', 'IP / OS / MAC', 'Hardware', 'Status', 'Asset Status', 'Last Seen', 'Actions'].map(h => (
+                          <th key={h} style={{ padding: '1rem', color: darkMode ? '#aaa' : '#616161', fontSize: '0.85rem', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredDevices.map((device) => {
+                        const dateStr = device.last_seen.endsWith('Z') ? device.last_seen : device.last_seen + 'Z'
+                        const lastSeenDate = new Date(dateStr)
+                        const diffMs = new Date() - lastSeenDate
+                        const isOnline = diffMs < 600000  // 10 min threshold
+                        const statusColor = isOnline ? '#4CAF50' : '#BDBDBD'
+                        const asc = assetStatusColor(device.asset_status)
 
-                      return (
-                        <tr key={device.device_id} style={{ borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}` }}>
-                          <td style={{ padding: '1rem' }}>
-                            <div style={{ fontWeight: 'bold', color: darkMode ? '#e0e0e0' : '#424242' }}>{device.hostname}</div>
-                            <div style={{ fontSize: '0.8rem', color: '#9e9e9e' }}>{device.system_type || 'Unknown'}</div>
-                          </td>
-                          <td style={{ padding: '1rem', color: darkMode ? '#bbb' : '#616161' }}>{device.current_user || '—'}</td>
-                          <td style={{ padding: '0.75rem 1rem' }}>
-                            {device.department ? (
-                              <span style={{
-                                backgroundColor: darkMode ? '#1a2a3a' : '#E3F2FD',
-                                color: '#1976D2',
-                                padding: '3px 8px', borderRadius: '10px',
-                                fontSize: '0.75rem', fontWeight: 'bold', whiteSpace: 'nowrap'
-                              }}>
-                                {device.department}
-                              </span>
-                            ) : (
-                              <span style={{ color: darkMode ? '#555' : '#bbb', fontSize: '0.85rem' }}>—</span>
-                            )}
-                          </td>
-                          <td style={{ padding: '1rem', color: darkMode ? '#bbb' : '#616161' }}>
-                            <div>{device.ip_address}</div>
-                            <div style={{ fontSize: '0.8rem', color: '#9e9e9e' }}>{device.os_name} {device.os_release}</div>
-                            {device.mac_address && (
-                              <div style={{ fontSize: '0.75rem', color: darkMode ? '#666' : '#bdbdbd', fontFamily: 'monospace', marginTop: '2px' }}>
-                                {device.mac_address}
+                        return (
+                          <tr key={device.device_id} style={{ borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}` }}>
+                            <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
+                              <div style={{ fontWeight: 'bold', color: darkMode ? '#e0e0e0' : '#424242' }}>{device.hostname}</div>
+                              <div style={{ fontSize: '0.8rem', color: '#9e9e9e' }}>{device.system_type || 'Unknown'}</div>
+                            </td>
+                            <td style={{ padding: '1rem', color: darkMode ? '#bbb' : '#616161', whiteSpace: 'nowrap' }}>{device.current_user || '—'}</td>
+                            <td style={{ padding: '0.75rem 1rem' }}>
+                              {device.department ? (
+                                <span style={{
+                                  backgroundColor: darkMode ? '#1a2a3a' : '#E3F2FD',
+                                  color: '#1976D2',
+                                  padding: '3px 8px', borderRadius: '10px',
+                                  fontSize: '0.75rem', fontWeight: 'bold', whiteSpace: 'nowrap'
+                                }}>
+                                  {device.department}
+                                </span>
+                              ) : (
+                                <span style={{ color: darkMode ? '#555' : '#bbb', fontSize: '0.85rem' }}>—</span>
+                              )}
+                            </td>
+                            <td style={{ padding: '1rem', color: darkMode ? '#bbb' : '#616161', whiteSpace: 'nowrap' }}>
+                              <div>{device.ip_address}</div>
+                              <div style={{ fontSize: '0.8rem', color: '#9e9e9e' }}>{device.os_name} {device.os_release}</div>
+                              {device.mac_address && (
+                                <div style={{ fontSize: '0.75rem', color: darkMode ? '#666' : '#bdbdbd', fontFamily: 'monospace', marginTop: '2px' }}>
+                                  {device.mac_address}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: '1rem', color: darkMode ? '#bbb' : '#616161', whiteSpace: 'nowrap' }}>
+                              <div style={{ fontSize: '0.9rem', color: darkMode ? '#ddd' : '#424242' }}>{device.gpu_model || 'No GPU Info'}</div>
+                              <div style={{ fontSize: '0.8rem', color: darkMode ? '#888' : '#757575' }}>
+                                {device.ram_total_gb ? Math.round(device.ram_total_gb) + 'GB RAM' : '—'} · {device.disk_total_gb ? Math.round(device.disk_total_gb) + 'GB Disk' : '—'}
                               </div>
-                            )}
-                          </td>
-                          <td style={{ padding: '1rem', color: darkMode ? '#bbb' : '#616161' }}>
-                            <div style={{ fontSize: '0.9rem', color: darkMode ? '#ddd' : '#424242' }}>{device.gpu_model || 'No GPU Info'}</div>
-                            <div style={{ fontSize: '0.8rem', color: darkMode ? '#888' : '#757575' }}>
-                              {device.ram_total_gb ? Math.round(device.ram_total_gb) + 'GB RAM' : '—'} · {device.disk_total_gb ? Math.round(device.disk_total_gb) + 'GB Disk' : '—'}
-                            </div>
-                          </td>
-                          <td style={{ padding: '1rem' }}>
-                            <span style={{
-                              backgroundColor: statusColor, color: 'white',
-                              padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold'
-                            }}>
-                              {isOnline ? 'Online' : 'Offline'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '1rem' }}>
-                            <span style={{
-                              backgroundColor: darkMode ? '#333' : asc.bg, color: asc.text,
-                              padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold'
-                            }}>
-                              {device.asset_status || 'Assigned'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '1rem', color: darkMode ? '#bbb' : '#616161' }}>
-                            {lastSeenDate.toLocaleTimeString()}
-                            <div style={{ fontSize: '0.8rem', color: '#9e9e9e' }}>{lastSeenDate.toLocaleDateString()}</div>
-                          </td>
-                          <td style={{ padding: '1rem' }}>
-                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                              <button
-                                onClick={() => setReassignTarget(device)}
-                                style={{
-                                  padding: '4px 10px',
-                                  backgroundColor: darkMode ? '#2c3e2e' : '#E8F5E9',
-                                  color: '#2E7D32',
-                                  border: '1px solid #A5D6A7',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  fontSize: '0.78rem',
-                                  fontWeight: 'bold'
-                                }}
-                              >
-                                Reassign
-                              </button>
-                              {activeTab === 'dashboard' && (
+                            </td>
+                            <td style={{ padding: '1rem' }}>
+                              <span style={{
+                                backgroundColor: statusColor, color: 'white',
+                                padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold'
+                              }}>
+                                {isOnline ? 'Online' : 'Offline'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '1rem' }}>
+                              <span style={{
+                                backgroundColor: darkMode ? '#333' : asc.bg, color: asc.text,
+                                padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold'
+                              }}>
+                                {device.asset_status || 'Assigned'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '1rem', color: darkMode ? '#bbb' : '#616161', whiteSpace: 'nowrap' }}>
+                              {lastSeenDate.toLocaleTimeString()}
+                              <div style={{ fontSize: '0.8rem', color: '#9e9e9e' }}>{lastSeenDate.toLocaleDateString()}</div>
+                            </td>
+                            <td style={{ padding: '1rem' }}>
+                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', minWidth: '150px' }}>
                                 <button
-                                  onClick={() => setDeptTarget(device)} // Added Edit Dept button
+                                  onClick={() => setReassignTarget(device)}
                                   style={{
                                     padding: '4px 10px',
-                                    backgroundColor: darkMode ? '#1a2a3a' : '#E3F2FD',
-                                    color: '#1976D2',
-                                    border: '1px solid #90CAF9',
+                                    backgroundColor: darkMode ? '#2c3e2e' : '#E8F5E9',
+                                    color: '#2E7D32',
+                                    border: '1px solid #A5D6A7',
                                     borderRadius: '4px',
                                     cursor: 'pointer',
                                     fontSize: '0.78rem',
                                     fontWeight: 'bold'
                                   }}
                                 >
-                                  Edit Dept
+                                  Reassign
                                 </button>
-                              )}
-                            </div>
+                                {activeTab === 'dashboard' && (
+                                  <button
+                                    onClick={() => setDeptTarget(device)} // Added Edit Dept button
+                                    style={{
+                                      padding: '4px 10px',
+                                      backgroundColor: darkMode ? '#1a2a3a' : '#E3F2FD',
+                                      color: '#1976D2',
+                                      border: '1px solid #90CAF9',
+                                      borderRadius: '4px',
+                                      cursor: 'pointer',
+                                      fontSize: '0.78rem',
+                                      fontWeight: 'bold'
+                                    }}
+                                  >
+                                    Edit Dept
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                      {filteredDevices.length === 0 && (
+                        <tr>
+                          <td colSpan="9" style={{ padding: '2rem', textAlign: 'center', color: darkMode ? '#888' : '#9e9e9e' }}>
+                            No devices found for this category.
                           </td>
                         </tr>
-                      )
-                    })}
-                    {filteredDevices.length === 0 && (
-                      <tr>
-                        <td colSpan="9" style={{ padding: '2rem', textAlign: 'center', color: darkMode ? '#888' : '#9e9e9e' }}>
-                          No devices found for this category.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </>
         )}
+        <Footer darkMode={darkMode} />
       </div>
     </div>
   )

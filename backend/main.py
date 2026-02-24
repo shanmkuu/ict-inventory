@@ -54,8 +54,31 @@ def receive_heartbeat(
     db_device = db.query(database.Device).filter(database.Device.device_id == device_data.device_id).first()
 
     if db_device:
+        # Detect user change
+        old_user = db_device.current_user
+        new_user = device_data.current_user
+        
+        if new_user and old_user != new_user:
+            _write_audit(db, "USER_LOGON", db_device.device_id, db_device.hostname, "agent", f"User changed from '{old_user}' to '{new_user}'")
+            
+            # Log transition in AssignmentHistory
+            user_record = database.AssignmentHistory(
+                device_id=db_device.device_id,
+                hostname=db_device.hostname,
+                serial_number=db_device.serial_number or device_data.serial_number,
+                previous_user=old_user,
+                new_user=new_user,
+                reassigned_at=datetime.now(timezone.utc),
+                admin_user="agent",
+                department=db_device.department,
+                reason="Auto-detected user logon",
+                record_type='USER_LOGON',
+            )
+            db.add(user_record)
+
+        # Update all other fields
         for key, value in device_data.dict().items():
-            if key != "timestamp":
+            if key != "timestamp" and value is not None:
                 setattr(db_device, key, value)
         db_device.last_seen = datetime.now(timezone.utc)
     else:

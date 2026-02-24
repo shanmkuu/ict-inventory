@@ -117,6 +117,50 @@ def install_service():
     except Exception as e:
         print(f"An error occurred: {e}")
 
+def get_machine_uuid():
+    """Retrieve Machine UUID using PowerShell."""
+    try:
+        if platform.system() == "Windows":
+            cmd = "powershell \"(Get-CimInstance Win32_ComputerSystemProduct).UUID\""
+            return subprocess.check_output(cmd, shell=True).decode().strip()
+    except:
+        pass
+    return None
+
+def get_serial_number_hw():
+    """Retrieve BIOS Serial Number using PowerShell."""
+    try:
+        if platform.system() == "Windows":
+            cmd = "powershell \"(Get-CimInstance Win32_BIOS).SerialNumber\""
+            return subprocess.check_output(cmd, shell=True).decode().strip()
+    except:
+        pass
+    return None
+
+def get_current_logged_in_user():
+    """Try to get the actually logged in user, especially if running as SYSTEM."""
+    try:
+        # Try psutil first to get session names
+        users = psutil.users()
+        if users:
+            # Return the first one, usually the console user
+            return users[0].name
+    except:
+        pass
+    
+    try:
+        # Fallback to environment variables
+        user = os.environ.get('USERNAME')
+        if user:
+            return user
+    except:
+        pass
+        
+    try:
+        return os.getlogin()
+    except:
+        return "Unknown"
+
 def get_gpu_info():
     """Retrieve GPU Name using PowerShell."""
     try:
@@ -173,8 +217,14 @@ def get_system_info():
     except:
         boot_time = "Unknown"
 
+    machine_uuid = get_machine_uuid()
+    serial_number = get_serial_number_hw()
+    
+    # Use Machine UUID as the primary device_id if available, fallback to getnode
+    device_id = machine_uuid if machine_uuid else str(uuid.getnode())
+
     return {
-        "device_id": str(uuid.getnode()),
+        "device_id": device_id,
         "hostname": socket.gethostname(),
         "ip_address": socket.gethostbyname(socket.gethostname()),
         "mac_address": get_mac_address(),
@@ -190,7 +240,8 @@ def get_system_info():
         "ram_total_gb": round(psutil.virtual_memory().total / (1024**3), 2),
         "disk_total_gb": round(psutil.disk_usage('/').total / (1024**3), 2),
         "boot_time": boot_time,
-        "current_user": os.getlogin()
+        "current_user": get_current_logged_in_user(),
+        "serial_number": serial_number
     }
 
 
