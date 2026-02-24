@@ -4,12 +4,12 @@ import { LayoutDashboard, Monitor, Laptop, Server, Printer, Settings, Network } 
 const Sidebar = ({ activeTab, onTabChange, darkMode }) => {
     const menuItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { type: 'external', label: 'EQUIPMENTS', href: 'http://172.16.1.18/auth/login/', isHeader: true },
+
         { id: 'all', label: 'All Devices', icon: Server },
         { id: 'desktop', label: 'System Units', icon: Monitor }, // Filter: System Type = Desktop
         { id: 'laptop', label: 'Laptops', icon: Laptop }, // Filter: System Type = Laptop
         // { id: 'mac', label: 'Mac Desktops', icon: Monitor }, // Placeholder for future
-        { type: 'external', label: 'Static Inventory', href: 'http://172.16.1.18/dashboard/system-units/', isHeader: true },
+
         { id: 'network-devices', label: 'Network Devices', icon: Network },
         { id: 'settings', label: 'Settings', icon: Settings },
     ]
