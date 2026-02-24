@@ -5,7 +5,10 @@ A lightweight system to track hardware inventory across your network. It feature
 ## Features
 
 - **Realtime Dashboard**: View all devices, online status, and hardware specs in a sleek dark-mode UI.
-- **Detailed Hardware Info**: Captures Hostname, IP, OS, CPU, GPU, RAM, Disk, and System Type (Laptop/Desktop).
+- **Detailed Hardware Info**: Captures Hostname, IP, OS, CPU, GPU, RAM, Disk, and System Type.
+- **Asset Lifecycle Management**: Track status (Available, Assigned, Under Repair, Retired), purchase dates, and warranty info.
+- **Records & Audit Logs**: Comprehensive history of device reassignments and department changes with export capabilities.
+- **Network Device Enrichment**: Nornir-powered discovery and enrichment for infrastructure devices.
 - **Standalone Agent**: No need to install Python on client machines. Just run the EXE.
 - **Automatic Startup**: Agents and Server can be configured to run automatically on system boot.
 
@@ -26,7 +29,7 @@ This machine will host the database and the dashboard.
     
     *Alternatively, run manually: `py -m uvicorn main:app --host 0.0.0.0 --port 8000` inside the backend folder.*
 
-4.  **Access Dashboard**: Open `http://localhost:8000` (or `http://YOUR_SERVER_IP:8000`).
+4.  **Access Dashboard**: Open `http://blackhat-x.local:8000` (or `http://YOUR_SERVER_IP:8000`).
 
 ---
 
@@ -97,16 +100,24 @@ To launch the entire system (Backend Server + Frontend Dashboard) with a single 
 
 1.  Locate `start_all.bat` in the project root folder.
 2.  **Double-click** it.
-3.  Two windows will open, and the dashboard will be accessible at your local network IP (e.g., `http://10.10.6.207:5173`).
+3.  The script will automatically:
+    - Launch the **Backend Server** (FastAPI) in a new window.
+    - Wait 5 seconds for initialization.
+    - Launch the **Frontend Dashboard** (Vite) in another window using `--host` mode.
+    - Wait another 5 seconds for the server to be ready.
+    - Automatically open your default browser to `http://blackhat-x.local:5173`.
 
 ## 🗑️ Removing Devices
 
 You can remove devices that are no longer active in two ways:
 
 ### 1. Via Dashboard
--   Navigate to "All Devices" or "Network Devices".
+-   Navigate to "All Devices".
 -   Click the **Delete** button in the "Actions" column.
 -   Confirm the deletion.
+
+> [!NOTE]
+> For safety, deletion is disabled for **Network Devices**. Please retire them via status update instead.
 
 ### 2. Via Command Line (Cleanup Script)
 Use the `remove_device.py` script to remove a device by IP, Hostname, or ID.

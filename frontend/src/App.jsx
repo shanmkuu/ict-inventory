@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import logo from './assets/ict_inventory_bg.png'
 import './App.css'
 import Sidebar from './components/Sidebar'
 import DashboardCharts from './components/DashboardCharts'
@@ -151,8 +152,24 @@ function App() {
         width: 'calc(100% - 250px)',
         minHeight: '100vh',
         padding: '2rem',
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
+        position: 'relative'
       }}>
+        {/* Background Logo Decoration */}
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: '250px',
+          right: 0,
+          bottom: 0,
+          backgroundImage: `url(${logo})`,
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          backgroundSize: '60%',
+          opacity: darkMode ? 0.03 : 0.02,
+          pointerEvents: 'none',
+          zIndex: 0
+        }} />
 
         {/* Header */}
         <div style={{ marginBottom: '2rem' }}>
@@ -389,7 +406,7 @@ function App() {
             )}
           </>
         )}
-        <Footer darkMode={darkMode} />
+        {['dashboard', 'settings'].includes(activeTab) && <Footer darkMode={darkMode} />}
       </div>
     </div>
   )

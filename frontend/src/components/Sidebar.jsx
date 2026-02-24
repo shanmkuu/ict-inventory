@@ -1,4 +1,5 @@
 import React from 'react'
+import logo from '../assets/icon_logo.png'
 import { LayoutDashboard, Monitor, Laptop, Server, Settings, Network, ClipboardList, Building2 } from 'lucide-react'
 
 const Sidebar = ({ activeTab, onTabChange, darkMode }) => {
@@ -25,9 +26,9 @@ const Sidebar = ({ activeTab, onTabChange, darkMode }) => {
             left: 0,
             top: 0
         }}>
-            <div style={{ padding: '1.5rem', fontWeight: 'bold', fontSize: '1.2rem', color: '#4CAF50', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#EF5350', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>K</div>
-                ICT Inventory v1.1
+            <div style={{ padding: '1.25rem 1.5rem', fontWeight: 'bold', fontSize: '1.1rem', color: '#4CAF50', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <img src={logo} alt="Logo" style={{ width: 60, height: 60, objectFit: 'contain' }} />
+                <span>ICT Inventory <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>v1.1</span></span>
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto' }}>
