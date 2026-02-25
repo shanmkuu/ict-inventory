@@ -20,7 +20,11 @@ const Footer = ({ darkMode, isBypassed }) => {
             return true;
         };
 
-        // Heartbeat Emitter
+        // Heartbeat Emitter — fire immediately on mount, then every 3s
+        if (validate()) {
+            const pulse = generatePulse();
+            window.dispatchEvent(new CustomEvent('system-pulse', { detail: { pulse } }));
+        }
         const heartbeat = setInterval(() => {
             if (validate()) {
                 const pulse = generatePulse();

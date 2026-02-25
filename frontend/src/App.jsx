@@ -168,6 +168,7 @@ function App() {
   const [unlockError, setUnlockError] = useState(false);
   const [securityEngine, setSecurityEngine] = useState(null);
   const lastPulse = useRef(Date.now());
+  const hasReceivedFirstPulse = useRef(false);
 
   // Gated Startup: Load Security Core Dynamically
   useEffect(() => {
@@ -231,6 +232,7 @@ function App() {
       const { pulse } = e.detail;
       if (verifyPulse(pulse)) {
         lastPulse.current = Date.now();
+        hasReceivedFirstPulse.current = true; // ← mark that Footer is alive
         // ✅ Footer is back and sending valid pulses — auto-recover
         setIsSecurityValid(true);
         setIsCriticalMissing(false); // Clear hard lockdown flag
@@ -239,8 +241,11 @@ function App() {
     window.addEventListener('system-pulse', handlePulse);
 
     const watchdog = setInterval(() => {
+      // Only trigger lockdown AFTER we've confirmed Footer was alive at least once.
+      // This prevents false lockdowns on a normal page refresh / slow boot.
+      if (!hasReceivedFirstPulse.current) return;
       if (Date.now() - lastPulse.current > 12000) {
-        // If system was valid but pulse stopped -> Lockdown + Revoke Bypass
+        // Pulse stopped AFTER first contact — genuine tampering detected
         setIsSecurityValid((prev) => {
           if (prev === true) {
             setIsBypassed(false);
@@ -252,7 +257,10 @@ function App() {
     }, 5000);
 
     // 3. Global DOM Sentinel
+    // Only active after the Footer has proven it's alive (hasReceivedFirstPulse).
+    // Before that, a missing link just means the Footer hasn't rendered yet — not tampering.
     const sentinel = new MutationObserver(() => {
+      if (!hasReceivedFirstPulse.current) return; // Boot grace — ignore pre-render state
       const link = document.getElementById('dev-credit-link');
       if (!link) {
         setIsSecurityValid(false);

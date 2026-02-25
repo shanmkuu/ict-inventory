@@ -151,38 +151,49 @@ const NetworkDevices = ({ darkMode }) => {
                             </tr>
                         </thead>
                         <tbody>
-                            {devices.map(device => (
-                                <tr
-                                    key={device.id}
-                                    onClick={() => setSelectedDevice(device)}
-                                    style={{
-                                        borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}`,
-                                        cursor: 'pointer'
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#252525' : '#f9f9f9'}
-                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                                >
-                                    <td style={{ padding: '1rem' }}>
-                                        <div style={{ fontWeight: 'bold' }}>{device.hostname || device.ip_address}</div>
-                                        {device.hostname && <div style={{ fontSize: '0.8rem', color: '#888' }}>{device.ip_address}</div>}
-                                    </td>
-                                    <td style={{ padding: '1rem' }}>
-                                        <span style={{
-                                            padding: '4px 8px', borderRadius: '4px',
-                                            backgroundColor: darkMode ? '#333' : '#eee', fontSize: '0.8rem'
-                                        }}>
-                                            {device.device_type}
-                                        </span>
-                                    </td>
-                                    <td style={{ padding: '1rem', fontFamily: 'monospace' }}>{device.mac_address}</td>
-                                    <td style={{ padding: '1rem', fontSize: '0.8rem', color: '#888', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                        {device.open_ports}
-                                    </td>
-                                    <td style={{ padding: '1rem' }}>
-                                        <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>Online</span>
-                                    </td>
-                                </tr>
-                            ))}
+                            {devices.map(device => {
+                                const lastSeenMs = device.last_seen ? new Date(device.last_seen.endsWith('Z') ? device.last_seen : device.last_seen + 'Z').getTime() : 0;
+                                const isOnline = lastSeenMs > 0 && (Date.now() - lastSeenMs) < 600000; // 10-min threshold
+                                return (
+                                    <tr
+                                        key={device.id}
+                                        onClick={() => setSelectedDevice(device)}
+                                        style={{
+                                            borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}`,
+                                            cursor: 'pointer'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#252525' : '#f9f9f9'}
+                                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                    >
+                                        <td style={{ padding: '1rem' }}>
+                                            <div style={{ fontWeight: 'bold' }}>{device.hostname || device.ip_address}</div>
+                                            {device.hostname && <div style={{ fontSize: '0.8rem', color: '#888' }}>{device.ip_address}</div>}
+                                        </td>
+                                        <td style={{ padding: '1rem' }}>
+                                            <span style={{
+                                                padding: '4px 8px', borderRadius: '4px',
+                                                backgroundColor: darkMode ? '#333' : '#eee', fontSize: '0.8rem'
+                                            }}>
+                                                {device.device_type}
+                                            </span>
+                                        </td>
+                                        <td style={{ padding: '1rem', fontFamily: 'monospace' }}>{device.mac_address}</td>
+                                        <td style={{ padding: '1rem', fontSize: '0.8rem', color: '#888', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {device.open_ports}
+                                        </td>
+                                        <td style={{ padding: '1rem' }}>
+                                            <span style={{ color: isOnline ? '#4CAF50' : '#BDBDBD', fontWeight: 'bold' }}>
+                                                {isOnline ? 'Online' : 'Offline'}
+                                            </span>
+                                            {!isOnline && device.last_seen && (
+                                                <div style={{ fontSize: '0.72rem', color: '#666', marginTop: '2px' }}>
+                                                    Last seen: {new Date(device.last_seen.endsWith('Z') ? device.last_seen : device.last_seen + 'Z').toLocaleString()}
+                                                </div>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                             {devices.length === 0 && (
                                 <tr>
                                     <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>
@@ -230,7 +241,15 @@ const DeviceDetails = ({ device, onBack, darkMode }) => {
                     <div>
                         <h3 style={{ borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Network</h3>
                         <p><strong>DNS Name:</strong> {device.dns_name || '-'}</p>
-                        <p><strong>Last Seen:</strong> {new Date(device.last_seen).toLocaleString()}</p>
+                        <p>
+                            <strong>Status:</strong>{' '}
+                            {(() => {
+                                const ms = device.last_seen ? new Date(device.last_seen.endsWith('Z') ? device.last_seen : device.last_seen + 'Z').getTime() : 0;
+                                const online = ms > 0 && (Date.now() - ms) < 600000;
+                                return <span style={{ color: online ? '#4CAF50' : '#BDBDBD', fontWeight: 'bold' }}>{online ? 'Online' : 'Offline'}</span>;
+                            })()}
+                        </p>
+                        <p><strong>Last Seen:</strong> {device.last_seen ? new Date(device.last_seen.endsWith('Z') ? device.last_seen : device.last_seen + 'Z').toLocaleString() : '—'}</p>
                         <div>
                             <strong>Open Ports:</strong>
                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>

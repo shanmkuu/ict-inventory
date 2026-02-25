@@ -1,0 +1,5 @@
+ID,Device ID,Hostname,Serial Number,Previous User,New User,Reassigned At,Admin,Department,Reason
+4,44874944195560,BlackHat-X,,(none),Strategy & Special Projects,2026-02-24T19:54:47.805498,Emmanuel,Strategy & Special Projects,Department changed from 'none' to 'Strategy & Special Projects'
+3,44874944195560,BlackHat-X,,ICT,Strategy & Special Projects,2026-02-24T11:34:56.898305,Emmanuel,Strategy & Special Projects,Department changed from 'ICT' to 'Strategy & Special Projects'
+2,44874944195560,BlackHat-X,,Digital,ICT,2026-02-24T11:32:27.305316,Emmanuel,ICT,Department changed from 'Digital' to 'ICT'
+1,44874944195560,BlackHat-X,,Admin,Leshan,2026-02-24T10:40:03.918890,Emmanuel,,resigned
