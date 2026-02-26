@@ -105,6 +105,12 @@ const Records = ({ darkMode }) => {
                     </div>
                 </div>
                 <div style={{ backgroundColor: bg, borderRadius: '8px', padding: '1rem 1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', flex: 1, minWidth: '140px' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#C62828', textTransform: 'uppercase' }}>Deletions</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#C62828' }}>
+                        {records.filter(r => r.record_type === 'DEVICE_DELETED').length}
+                    </div>
+                </div>
+                <div style={{ backgroundColor: bg, borderRadius: '8px', padding: '1rem 1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', flex: 1, minWidth: '140px' }}>
                     <div style={{ fontSize: '0.8rem', color: muted, textTransform: 'uppercase' }}>Showing</div>
                     <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: text }}>{displayed.length}</div>
                 </div>
@@ -128,17 +134,17 @@ const Records = ({ darkMode }) => {
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
                     {/* Record type quick filter */}
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
-                        {['All', 'REASSIGN', 'DEPT_CHANGE'].map(t => (
+                        {['All', 'REASSIGN', 'DEPT_CHANGE', 'DEVICE_DELETED'].map(t => (
                             <button key={t} onClick={() => setFilterType(t)} style={{
                                 padding: '4px 12px', borderRadius: '12px', border: 'none', cursor: 'pointer',
                                 fontSize: '0.78rem', fontWeight: filterType === t ? 'bold' : 'normal',
                                 backgroundColor: filterType === t
-                                    ? (t === 'DEPT_CHANGE' ? '#1976D2' : t === 'REASSIGN' ? '#4CAF50' : (darkMode ? '#444' : '#555'))
+                                    ? (t === 'DEPT_CHANGE' ? '#1976D2' : t === 'REASSIGN' ? '#4CAF50' : t === 'DEVICE_DELETED' ? '#C62828' : (darkMode ? '#444' : '#555'))
                                     : (darkMode ? '#2a2a2a' : '#eee'),
                                 color: filterType === t ? 'white' : muted,
                                 whiteSpace: 'nowrap'
                             }}>
-                                {t === 'All' ? 'All Records' : t === 'REASSIGN' ? 'User Reassignments' : 'Dept. Changes'}
+                                {t === 'All' ? 'All Records' : t === 'REASSIGN' ? 'User Reassignments' : t === 'DEPT_CHANGE' ? 'Dept. Changes' : '🗑 Deletions'}
                             </button>
                         ))}
                     </div>
@@ -201,13 +207,26 @@ const Records = ({ darkMode }) => {
                                         }}>
                                             {/* Type badge */}
                                             <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
-                                                <span style={{
-                                                    backgroundColor: isDept ? (darkMode ? '#1a2a3a' : '#E3F2FD') : (darkMode ? '#2c3e2e' : '#E8F5E9'),
-                                                    color: isDept ? '#1976D2' : '#2E7D32',
-                                                    padding: '3px 8px', borderRadius: '10px', fontSize: '0.73rem', fontWeight: 'bold'
-                                                }}>
-                                                    {isDept ? '🏢 Dept. Change' : '👤 Reassignment'}
-                                                </span>
+                                                {(() => {
+                                                    const isDeleted = r.record_type === 'DEVICE_DELETED'
+                                                    const isDept = r.record_type === 'DEPT_CHANGE'
+                                                    if (isDeleted) return (
+                                                        <span style={{
+                                                            backgroundColor: darkMode ? '#3a1a1a' : '#FFEBEE',
+                                                            color: '#C62828',
+                                                            padding: '3px 8px', borderRadius: '10px', fontSize: '0.73rem', fontWeight: 'bold'
+                                                        }}>🗑 Deleted</span>
+                                                    )
+                                                    return (
+                                                        <span style={{
+                                                            backgroundColor: isDept ? (darkMode ? '#1a2a3a' : '#E3F2FD') : (darkMode ? '#2c3e2e' : '#E8F5E9'),
+                                                            color: isDept ? '#1976D2' : '#2E7D32',
+                                                            padding: '3px 8px', borderRadius: '10px', fontSize: '0.73rem', fontWeight: 'bold'
+                                                        }}>
+                                                            {isDept ? '🏢 Dept. Change' : '👤 Reassignment'}
+                                                        </span>
+                                                    )
+                                                })()}
                                             </td>
                                             <td style={{ padding: '0.85rem 1rem' }}>
                                                 <div style={{ fontWeight: 'bold', color: text }}>{r.hostname || r.device_id}</div>

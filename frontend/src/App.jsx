@@ -9,6 +9,7 @@ import Records from './components/Records'
 import ReassignModal from './components/ReassignModal'
 import SetDepartmentModal from './components/SetDepartmentModal'
 import Departments from './components/Departments'
+import DeleteConfirmModal from './components/DeleteConfirmModal'
 
 import LockdownScreen from './components/LockdownScreen'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -57,6 +58,8 @@ function App() {
   const [reassignTarget, setReassignTarget] = useState(null) // device object or null
   // Department modal state
   const [deptTarget, setDeptTarget] = useState(null) // device object or null
+  // Delete confirmation modal state
+  const [deleteTarget, setDeleteTarget] = useState(null) // device to confirm delete
   // All Devices dept filter
   const [deptFilter, setDeptFilter] = useState('All')
 
@@ -94,21 +97,10 @@ function App() {
     return () => clearInterval(interval)
   }, [])
 
-  // Deduplicate devices by hostname (keep most recent)
+  // We no longer deduplicate here since the backend now merges duplicates by MAC.
+  // We want admins to see all actual DB records so they can delete old phantom ones.
   const uniqueDevices = useMemo(() => {
-    const map = new Map()
-    devices.forEach(d => {
-      const hostname = d.hostname
-      const existing = map.get(hostname)
-      if (!existing) {
-        map.set(hostname, d)
-      } else {
-        const dTime = new Date(d.last_seen.endsWith('Z') ? d.last_seen : d.last_seen + 'Z').getTime()
-        const eTime = new Date(existing.last_seen.endsWith('Z') ? existing.last_seen : existing.last_seen + 'Z').getTime()
-        if (dTime > eTime) map.set(hostname, d)
-      }
-    })
-    return Array.from(map.values())
+    return devices
   }, [devices])
 
   // Filtering Logic
@@ -368,6 +360,28 @@ function App() {
             />
           )}
 
+          {deleteTarget && (
+            <DeleteConfirmModal
+              device={deleteTarget}
+              darkMode={darkMode}
+              onCancel={() => setDeleteTarget(null)}
+              onConfirm={async () => {
+                const device = deleteTarget
+                setDeleteTarget(null)
+                try {
+                  const res = await fetch(`/api/v1/devices/${device.device_id}?admin=admin`, { method: 'DELETE' })
+                  if (res.ok || res.status === 204) {
+                    fetchDevices()
+                  } else {
+                    alert('Delete failed: ' + (await res.text()))
+                  }
+                } catch (e) {
+                  alert('Delete failed: ' + e.message)
+                }
+              }}
+            />
+          )}
+
           {/* Sidebar */}
           <Sidebar activeTab={activeTab} onTabChange={setActiveTab} darkMode={darkMode} />
 
@@ -610,6 +624,24 @@ function App() {
                                         }}
                                       >
                                         Edit Dept
+                                      </button>
+                                    )}
+                                    {activeTab === 'all' && (
+                                      <button
+                                        onClick={() => setDeleteTarget(device)}
+                                        title="Permanently delete this device (use for duplicates / phantom entries)"
+                                        style={{
+                                          padding: '4px 10px',
+                                          backgroundColor: darkMode ? '#3a1a1a' : '#FFEBEE',
+                                          color: '#C62828',
+                                          border: '1px solid #EF9A9A',
+                                          borderRadius: '4px',
+                                          cursor: 'pointer',
+                                          fontSize: '0.78rem',
+                                          fontWeight: 'bold'
+                                        }}
+                                      >
+                                        🗑 Delete
                                       </button>
                                     )}
                                   </div>

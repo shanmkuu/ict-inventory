@@ -58,6 +58,9 @@ def verify_api_key(x_api_key: str = Header(...)):
 
 # ── Heartbeat ─────────────────────────────────────────────────────────────────
 
+# Fields managed exclusively by admins via PATCH — agent heartbeats must NEVER overwrite them
+AGENT_PROTECTED_FIELDS = {"department", "asset_tag", "purchase_date", "warranty_expiry", "asset_status", "timestamp"}
+
 @app.post("/api/v1/heartbeat", response_model=schemas.Device)
 def receive_heartbeat(
     device_data: schemas.DeviceCreate,
@@ -66,14 +69,27 @@ def receive_heartbeat(
 ):
     db_device = db.query(database.Device).filter(database.Device.device_id == device_data.device_id).first()
 
+    # --- MAC fallback: handle re-installed agents that produce a different device_id ---
+    if not db_device and device_data.mac_address:
+        db_device = db.query(database.Device).filter(
+            database.Device.mac_address == device_data.mac_address
+        ).first()
+        if db_device:
+            old_id = db_device.device_id
+            db_device.device_id = device_data.device_id
+            _write_audit(
+                db, "DEVICE_MERGED", device_data.device_id, db_device.hostname, "agent",
+                f"device_id updated from '{old_id}' to '{device_data.device_id}' via MAC match ({device_data.mac_address})"
+            )
+
     if db_device:
         # Detect user change
         old_user = db_device.current_user
         new_user = device_data.current_user
-        
+
         if new_user and old_user != new_user:
             _write_audit(db, "USER_LOGON", db_device.device_id, db_device.hostname, "agent", f"User changed from '{old_user}' to '{new_user}'")
-            
+
             # Log transition in AssignmentHistory
             user_record = database.AssignmentHistory(
                 device_id=db_device.device_id,
@@ -89,13 +105,17 @@ def receive_heartbeat(
             )
             db.add(user_record)
 
-        # Update all other fields
+        # Update hardware/network fields — skip admin-managed lifecycle fields
         for key, value in device_data.dict().items():
-            if key != "timestamp" and value is not None:
+            if key in AGENT_PROTECTED_FIELDS:
+                continue  # Never let heartbeats overwrite admin-set fields
+            if value is not None:
                 setattr(db_device, key, value)
         db_device.last_seen = datetime.now(timezone.utc)
     else:
-        db_device = database.Device(**device_data.dict(exclude={"timestamp"}))
+        # Brand-new device — exclude protected fields so DB defaults apply
+        new_device_data = device_data.dict(exclude=AGENT_PROTECTED_FIELDS | {"timestamp"})
+        db_device = database.Device(**new_device_data)
         db_device.last_seen = datetime.now(timezone.utc)
         db.add(db_device)
         # Audit: new device
@@ -167,13 +187,35 @@ def update_device(
     return enrich_device_status(db_device)
 
 
-# Kept for backward compatibility but soft-disabled
-@app.delete("/api/v1/devices/{device_id}", status_code=410)
-def delete_device(device_id: str, db: Session = Depends(get_db)):
-    raise HTTPException(
-        status_code=410,
-        detail="Hard delete is disabled. Use PATCH to set asset_status='Retired' or POST /reassign."
+@app.delete("/api/v1/devices/{device_id}", status_code=204)
+def delete_device(
+    device_id: str,
+    admin: str = Query(default="admin", description="Admin performing the deletion"),
+    db: Session = Depends(get_db)
+):
+    """Permanently remove a device entry (for duplicates / phantom devices)."""
+    db_device = db.query(database.Device).filter(database.Device.device_id == device_id).first()
+    if db_device is None:
+        raise HTTPException(status_code=404, detail="Device not found")
+    _write_audit(db, "DEVICE_DELETED", db_device.device_id, db_device.hostname, admin,
+                 f"Device permanently deleted: {db_device.hostname} ({db_device.ip_address})")
+    # Store a permanent deletion snapshot in AssignmentHistory (visible in Records tab)
+    deletion_record = database.AssignmentHistory(
+        device_id=db_device.device_id,
+        hostname=db_device.hostname,
+        serial_number=db_device.serial_number,
+        previous_user=db_device.current_user,
+        new_user="(Deleted)",
+        reassigned_at=datetime.now(timezone.utc),
+        admin_user=admin,
+        department=db_device.department,
+        reason=f"Device permanently deleted — {db_device.hostname} ({db_device.ip_address or ''})",
+        record_type='DEVICE_DELETED',
     )
+    db.add(deletion_record)
+    db.delete(db_device)
+    db.commit()
+    return None
 
 
 # ── Reassign ─────────────────────────────────────────────────────────────────
