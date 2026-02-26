@@ -5,13 +5,26 @@ from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta, timezone
+from contextlib import asynccontextmanager
 from . import database, schemas
 from .routes import network_devices
 import os
 import csv
 import io
+import asyncio
 
-app = FastAPI(title="ICT Inventory API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Launch periodic network scan in the background on startup."""
+    task = asyncio.create_task(network_devices.start_periodic_scan(interval_seconds=300))
+    yield
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+app = FastAPI(title="ICT Inventory API", lifespan=lifespan)
 
 app.include_router(network_devices.router, prefix="/api/v1/network", tags=["Network Devices"])
 

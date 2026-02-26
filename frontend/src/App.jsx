@@ -114,8 +114,14 @@ function App() {
   // Filtering Logic
   const filteredDevices = useMemo(() => {
     return uniqueDevices.filter(device => {
-      if (activeTab === 'dashboard' || activeTab === 'all') {
-        if (activeTab === 'all' && deptFilter !== 'All') {
+      if (activeTab === 'dashboard') {
+        // "Recent Activity" -> show devices last seen >= 3 hours ago AND < 24 hours ago, OR currently online (<10 mins)
+        const dateStr = device.last_seen.endsWith('Z') ? device.last_seen : device.last_seen + 'Z';
+        const diffMs = Date.now() - new Date(dateStr).getTime();
+        return (diffMs >= 10800000 && diffMs < 86400000) || diffMs < 600000; // 3-24 hrs OR < 10 mins (online)
+      }
+      if (activeTab === 'all') {
+        if (deptFilter !== 'All') {
           return (device.department || '') === deptFilter
         }
         return true

@@ -2,6 +2,9 @@ import asyncio
 import socket
 import nmap
 import json
+import ipaddress
+import struct
+import platform
 from concurrent.futures import ThreadPoolExecutor
 from .snmp_service import SnmpService
 
@@ -16,6 +19,142 @@ class DiscoveryService:
         except Exception as e:
             print(f"Warning: nmap init failed: {e}")
             self.nm = None
+
+    def get_local_subnets(self):
+        """
+        Auto-detects active network interfaces and returns their subnets in CIDR notation.
+        Uses only stdlib — no netifaces dependency.
+        Excludes loopback (127.x) and link-local (169.254.x) addresses.
+        Private /24 subnets are expanded to /22 so that ~1000 IPs are scanned
+        (e.g. 10.10.6.0/22 covers 10.10.4.x through 10.10.7.x).
+        """
+        subnets = []
+        
+        try:
+            if platform.system().lower() == "windows":
+                subnets = self._get_subnets_windows()
+            else:
+                subnets = self._get_subnets_unix()
+        except Exception as e:
+            print(f"[AutoScan] Subnet detection failed: {e}")
+        
+        # Fallback: try the hostname-based approach
+        if not subnets:
+            try:
+                hostname = socket.gethostname()
+                local_ip = socket.gethostbyname(hostname)
+                ip = ipaddress.IPv4Address(local_ip)
+                if not ip.is_loopback and not ip.is_link_local:
+                    network = ipaddress.IPv4Network(f"{local_ip}/24", strict=False)
+                    subnets.append(str(network))
+                    print(f"[AutoScan] Fallback subnet detection: {network}")
+            except Exception as e:
+                print(f"[AutoScan] Fallback detection also failed: {e}")
+
+        # Expand private /24 (or tighter) subnets to /22 to cover ~1000 hosts.
+        # This lets the scanner reach IPs past .254 by spanning adjacent blocks.
+        expanded = []
+        for subnet_str in subnets:
+            try:
+                net = ipaddress.IPv4Network(subnet_str, strict=False)
+                if net.is_private and net.prefixlen >= 24:
+                    wider = net.supernet(new_prefix=22)
+                    expanded_str = str(wider)
+                    if expanded_str not in expanded:
+                        expanded.append(expanded_str)
+                    print(f"[AutoScan] Expanded {subnet_str} → {expanded_str} (~{wider.num_addresses - 2} hosts)")
+                else:
+                    if subnet_str not in expanded:
+                        expanded.append(subnet_str)
+            except Exception:
+                if subnet_str not in expanded:
+                    expanded.append(subnet_str)
+
+        print(f"[AutoScan] Final subnets to scan: {expanded}")
+        return expanded
+
+    def _get_subnets_windows(self):
+        """Use ipconfig output to find subnets on Windows."""
+        import subprocess
+        import re
+        subnets = []
+        try:
+            result = subprocess.run(
+                ["ipconfig"],
+                capture_output=True, text=True, timeout=10
+            )
+            output = result.stdout
+
+            # Parse IPv4 Address + Subnet Mask pairs
+            # Example:
+            #   IPv4 Address. . . . . . . . . . . : 192.168.1.100
+            #   Subnet Mask . . . . . . . . . . . : 255.255.255.0
+            ip_pattern = re.compile(r"IPv4 Address[.\s]+:\s+([\d.]+)")
+            mask_pattern = re.compile(r"Subnet Mask[.\s]+:\s+([\d.]+)")
+
+            ips = ip_pattern.findall(output)
+            masks = mask_pattern.findall(output)
+
+            for ip_str, mask_str in zip(ips, masks):
+                try:
+                    ip = ipaddress.IPv4Address(ip_str)
+                    if ip.is_loopback or ip.is_link_local:
+                        continue
+                    network = ipaddress.IPv4Network(f"{ip_str}/{mask_str}", strict=False)
+                    subnet_cidr = str(network)
+                    if subnet_cidr not in subnets:
+                        subnets.append(subnet_cidr)
+                except Exception:
+                    pass
+        except Exception as e:
+            print(f"[AutoScan] Windows subnet detection error: {e}")
+        return subnets
+
+    def _get_subnets_unix(self):
+        """Use 'ip addr' or 'ifconfig' to find subnets on Unix/Linux."""
+        import subprocess
+        import re
+        subnets = []
+        try:
+            # Try 'ip addr show' first (modern Linux)
+            try:
+                result = subprocess.run(
+                    ["ip", "addr", "show"],
+                    capture_output=True, text=True, timeout=10
+                )
+                output = result.stdout
+                # Match: inet 192.168.1.100/24
+                for match in re.finditer(r"inet\s+([\d.]+/\d+)", output):
+                    try:
+                        network = ipaddress.IPv4Network(match.group(1), strict=False)
+                        if not network.is_loopback and not network.is_link_local:
+                            subnet_cidr = str(network)
+                            if subnet_cidr not in subnets:
+                                subnets.append(subnet_cidr)
+                    except Exception:
+                        pass
+            except FileNotFoundError:
+                # Fallback to ifconfig
+                result = subprocess.run(
+                    ["ifconfig"],
+                    capture_output=True, text=True, timeout=10
+                )
+                output = result.stdout
+                for match in re.finditer(r"inet\s+([\d.]+)\s+netmask\s+([\d.]+)", output):
+                    try:
+                        ip_str, mask_str = match.group(1), match.group(2)
+                        ip = ipaddress.IPv4Address(ip_str)
+                        if ip.is_loopback or ip.is_link_local:
+                            continue
+                        network = ipaddress.IPv4Network(f"{ip_str}/{mask_str}", strict=False)
+                        subnet_cidr = str(network)
+                        if subnet_cidr not in subnets:
+                            subnets.append(subnet_cidr)
+                    except Exception:
+                        pass
+        except Exception as e:
+            print(f"[AutoScan] Unix subnet detection error: {e}")
+        return subnets
 
     async def scan_subnet(self, subnet, communities=["public"]):
         """
@@ -58,10 +197,10 @@ class DiscoveryService:
             network = ipaddress.ip_network(subnet, strict=False)
             hosts = [str(ip) for ip in network.hosts()]
             
-            # Limit scan size for safety
-            if len(hosts) > 512:
-                print(f"Subnet too large for fallback scan ({len(hosts)} hosts). Limiting to first 256.")
-                hosts = hosts[:256]
+            # Limit scan size for safety (1024 covers a full /22)
+            if len(hosts) > 1024:
+                print(f"Subnet too large for fallback scan ({len(hosts)} hosts). Limiting to first 1024.")
+                hosts = hosts[:1024]
 
             # Use system ping
             # Windows: ping -n 1 -w 500 <ip>
