@@ -208,6 +208,24 @@ def get_mac_address():
     node = uuid.getnode()
     return '-'.join(['{:02X}'.format((node >> ele) & 0xff) for ele in range(0, 8*6, 8)][::-1])
 
+def get_physical_disk_capacity():
+    """Retrieve total physical disk capacity in GB using PowerShell."""
+    try:
+        if platform.system() == "Windows":
+            cmd = "powershell \"(Get-PhysicalDisk | Measure-Object -Property Size -Sum).Sum\""
+            output = subprocess.check_output(cmd, shell=True).decode().strip()
+            if output:
+                total_bytes = int(output)
+                return round(total_bytes / (1024**3), 2)
+    except:
+        pass
+    
+    # Fallback to logical partition capacity if physical fails
+    try:
+        return round(psutil.disk_usage('/').total / (1024**3), 2)
+    except:
+        return 0.0
+
 
 def get_system_info():
     try:
@@ -238,7 +256,7 @@ def get_system_info():
         "cpu_cores_logical": psutil.cpu_count(logical=True),
         "cpu_cores_physical": psutil.cpu_count(logical=False),
         "ram_total_gb": round(psutil.virtual_memory().total / (1024**3), 2),
-        "disk_total_gb": round(psutil.disk_usage('/').total / (1024**3), 2),
+        "disk_total_gb": get_physical_disk_capacity(),
         "boot_time": boot_time,
         "current_user": get_current_logged_in_user(),
         "serial_number": serial_number
