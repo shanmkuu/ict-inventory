@@ -17,6 +17,7 @@ const Records = ({ darkMode }) => {
     const [filterDept, setFilterDept] = useState('')
     const [filterDateFrom, setFilterDateFrom] = useState('')
     const [filterDateTo, setFilterDateTo] = useState('')
+    const [filterCondition, setFilterCondition] = useState('All')
     const [filterType, setFilterType] = useState('All') // All | REASSIGN | DEPT_CHANGE
 
     const bg = darkMode ? '#1e1e1e' : '#fff'
@@ -33,6 +34,7 @@ const Records = ({ darkMode }) => {
             if (filterDevice) params.set('device_id', filterDevice)
             if (filterUser) params.set('user', filterUser)
             if (filterDept) params.set('department', filterDept)
+            if (filterCondition !== 'All') params.set('condition', filterCondition)
             if (filterDateFrom) params.set('date_from', filterDateFrom)
             if (filterDateTo) params.set('date_to', filterDateTo)
             const res = await fetch(`/api/v1/records?${params.toString()}`)
@@ -44,7 +46,7 @@ const Records = ({ darkMode }) => {
         } finally {
             setLoading(false)
         }
-    }, [filterDevice, filterUser, filterDept, filterDateFrom, filterDateTo])
+    }, [filterDevice, filterUser, filterDept, filterCondition, filterDateFrom, filterDateTo])
 
     useEffect(() => { fetchRecords() }, [fetchRecords])
 
@@ -53,6 +55,7 @@ const Records = ({ darkMode }) => {
         if (filterDevice) params.set('device_id', filterDevice)
         if (filterUser) params.set('user', filterUser)
         if (filterDept) params.set('department', filterDept)
+        if (filterCondition !== 'All') params.set('condition', filterCondition)
         if (filterDateFrom) params.set('date_from', filterDateFrom)
         if (filterDateTo) params.set('date_to', filterDateTo)
         window.open(`/api/v1/records/export?${params.toString()}`, '_blank')
@@ -61,6 +64,7 @@ const Records = ({ darkMode }) => {
     const clearFilters = () => {
         setFilterDevice(''); setFilterUser(''); setFilterDept('')
         setFilterDateFrom(''); setFilterDateTo(''); setSearch('')
+        setFilterCondition('All')
         setFilterType('All')
     }
 
@@ -82,6 +86,15 @@ const Records = ({ darkMode }) => {
         padding: '0.45rem 0.7rem', borderRadius: '6px',
         border: `1px solid ${border}`, backgroundColor: inputBg,
         color: text, fontSize: '0.85rem', outline: 'none'
+    }
+
+    // Condition badge colors
+    const conditionColor = (condition) => {
+        switch (condition) {
+            case 'Faulty': return { bg: '#FFEBEE', text: '#C62828' }
+            case 'Decommissioned': return { bg: '#F5F5F5', text: '#757575' }
+            default: return { bg: '#E8F5E9', text: '#2E7D32' } // Functioning
+        }
     }
 
     return (
@@ -144,7 +157,7 @@ const Records = ({ darkMode }) => {
                                 color: filterType === t ? 'white' : muted,
                                 whiteSpace: 'nowrap'
                             }}>
-                                {t === 'All' ? 'All Records' : t === 'REASSIGN' ? 'User Reassignments' : t === 'DEPT_CHANGE' ? 'Dept. Changes' : '🗑 Deletions'}
+                                {t === 'All' ? 'All Records' : t === 'REASSIGN' ? 'Owner Reassignments' : t === 'DEPT_CHANGE' ? 'Dept. Changes' : '🗑 Deletions'}
                             </button>
                         ))}
                     </div>
@@ -157,8 +170,18 @@ const Records = ({ darkMode }) => {
                             style={{ ...inputStyle, width: '100%', paddingLeft: '28px', boxSizing: 'border-box' }}
                         />
                     </div>
-                    <input value={filterUser} onChange={e => setFilterUser(e.target.value)} placeholder="User…" style={{ ...inputStyle, width: '100px' }} />
+                    <input value={filterUser} onChange={e => setFilterUser(e.target.value)} placeholder="Owner…" style={{ ...inputStyle, width: '100px' }} />
                     <input value={filterDept} onChange={e => setFilterDept(e.target.value)} placeholder="Dept…" style={{ ...inputStyle, width: '100px' }} />
+                    <select
+                        value={filterCondition}
+                        onChange={e => setFilterCondition(e.target.value)}
+                        style={{ ...inputStyle, width: '130px', cursor: 'pointer' }}
+                    >
+                        <option value="All">All Conditions</option>
+                        <option value="Functioning">Functioning</option>
+                        <option value="Faulty">Faulty</option>
+                        <option value="Decommissioned">Decommissioned</option>
+                    </select>
                     <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} style={{ ...inputStyle, width: '120px' }} title="From" />
                     <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} style={{ ...inputStyle, width: '120px' }} title="To" />
                     <button onClick={fetchRecords} style={{
@@ -190,7 +213,7 @@ const Records = ({ darkMode }) => {
                         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                             <thead style={{ backgroundColor: surfaceBg, borderBottom: `2px solid ${border}` }}>
                                 <tr>
-                                    {['Type', 'Device', 'Serial No.', 'Previous User / Dept', 'New User / Dept', 'Date & Time', 'Admin', 'Department', 'Reason'].map(h => (
+                                    {['Type', 'Device', 'Serial No.', 'Condition', 'Previous Owner / Dept', 'New Owner / Dept', 'Date & Time', 'Admin', 'Department', 'Reason'].map(h => (
                                         <th key={h} style={{ padding: '0.85rem 1rem', color: muted, fontSize: '0.78rem', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                                             {h}
                                         </th>
@@ -233,6 +256,19 @@ const Records = ({ darkMode }) => {
                                                 <div style={{ fontSize: '0.75rem', color: muted }}>{r.device_id}</div>
                                             </td>
                                             <td style={{ padding: '0.85rem 1rem', color: muted, fontSize: '0.85rem' }}>{r.serial_number || '—'}</td>
+                                            <td style={{ padding: '0.85rem 1rem' }}>
+                                                {r.condition ? (
+                                                    <span style={{
+                                                        backgroundColor: darkMode ? '#333' : conditionColor(r.condition).bg,
+                                                        color: conditionColor(r.condition).text,
+                                                        padding: '2px 8px', borderRadius: '10px', fontSize: '0.8rem', fontWeight: 'bold'
+                                                    }}>
+                                                        {r.condition}
+                                                    </span>
+                                                ) : (
+                                                    <span style={{ color: muted, fontSize: '0.85rem' }}>—</span>
+                                                )}
+                                            </td>
                                             <td style={{ padding: '0.85rem 1rem' }}>
                                                 <span style={{
                                                     backgroundColor: isDept ? (darkMode ? '#2a2a3a' : '#EEF2FF') : (darkMode ? '#3c2c2c' : '#FFEBEE'),

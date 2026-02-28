@@ -70,7 +70,7 @@ export default function DeleteConfirmModal({ device, onConfirm, onCancel, darkMo
                     </div>
                     <div style={{ fontSize: '0.82rem', color: textSub, lineHeight: 1.7 }}>
                         {device.ip_address && <div>IP: <strong style={{ color: textMain }}>{device.ip_address}</strong></div>}
-                        {device.current_user && <div>User: <strong style={{ color: textMain }}>{device.current_user}</strong></div>}
+                        {device.current_user && <div>Owner: <strong style={{ color: textMain }}>{device.current_user}</strong></div>}
                         {device.department && <div>Dept: <strong style={{ color: textMain }}>{device.department}</strong></div>}
                     </div>
                 </div>

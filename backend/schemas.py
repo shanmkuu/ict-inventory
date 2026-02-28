@@ -29,6 +29,7 @@ class DeviceBase(BaseModel):
     asset_tag: Optional[str] = None
     department: Optional[str] = None
     asset_status: Optional[str] = "Assigned"
+    condition: Optional[str] = "Functioning"
     purchase_date: Optional[str] = None
     warranty_expiry: Optional[str] = None
 
@@ -43,6 +44,7 @@ class DevicePatch(BaseModel):
     asset_tag: Optional[str] = None
     department: Optional[str] = None
     asset_status: Optional[str] = None   # Available / Assigned / Under Repair / Retired
+    condition: Optional[str] = None      # Faulty / Functioning / Decommissioned
     purchase_date: Optional[str] = None
     warranty_expiry: Optional[str] = None
     current_user: Optional[str] = None
@@ -78,6 +80,7 @@ class AssignmentHistoryOut(BaseModel):
     admin_user: str
     department: Optional[str] = None
     reason: Optional[str] = None
+    condition: Optional[str] = None
     record_type: str = 'REASSIGN'  # REASSIGN | DEPT_CHANGE
 
     class Config:

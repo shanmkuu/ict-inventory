@@ -59,7 +59,7 @@ def verify_api_key(x_api_key: str = Header(...)):
 # ── Heartbeat ─────────────────────────────────────────────────────────────────
 
 # Fields managed exclusively by admins via PATCH — agent heartbeats must NEVER overwrite them
-AGENT_PROTECTED_FIELDS = {"department", "asset_tag", "purchase_date", "warranty_expiry", "asset_status", "timestamp"}
+AGENT_PROTECTED_FIELDS = {"department", "asset_tag", "purchase_date", "warranty_expiry", "asset_status", "condition", "timestamp"}
 
 @app.post("/api/v1/heartbeat", response_model=schemas.Device)
 def receive_heartbeat(
@@ -101,6 +101,7 @@ def receive_heartbeat(
                 admin_user="agent",
                 department=db_device.department,
                 reason="Auto-detected user logon",
+                condition=db_device.condition,
                 record_type='USER_LOGON',
             )
             db.add(user_record)
@@ -178,6 +179,7 @@ def update_device(
             admin_user=admin,
             department=new_department,
             reason=f"Department changed from '{old_department or 'none'}' to '{new_department}'",
+            condition=db_device.condition,
             record_type='DEPT_CHANGE',
         )
         db.add(dept_record)
@@ -210,6 +212,7 @@ def delete_device(
         admin_user=admin,
         department=db_device.department,
         reason=f"Device permanently deleted — {db_device.hostname} ({db_device.ip_address or ''})",
+        condition=db_device.condition,
         record_type='DEVICE_DELETED',
     )
     db.add(deletion_record)
@@ -243,6 +246,7 @@ def reassign_device(
         admin_user=payload.admin_user,
         department=db_device.department,
         reason=payload.reason,
+        condition=db_device.condition,
     )
     db.add(record)
 
@@ -268,6 +272,7 @@ def list_records(
     device_id: Optional[str] = None,
     user: Optional[str] = None,
     department: Optional[str] = None,
+    condition: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     skip: int = 0,
@@ -284,6 +289,8 @@ def list_records(
         )
     if department:
         q = q.filter(database.AssignmentHistory.department.ilike(f"%{department}%"))
+    if condition:
+        q = q.filter(database.AssignmentHistory.condition.ilike(f"%{condition}%"))
     if date_from:
         try:
             q = q.filter(database.AssignmentHistory.reassigned_at >= datetime.fromisoformat(date_from))
@@ -304,26 +311,27 @@ def export_records_csv(
     device_id: Optional[str] = None,
     user: Optional[str] = None,
     department: Optional[str] = None,
+    condition: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     """Export assignment history as CSV."""
     records = list_records(
-        device_id=device_id, user=user, department=department,
+        device_id=device_id, user=user, department=department, condition=condition,
         date_from=date_from, date_to=date_to, db=db
     )
 
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["ID", "Device ID", "Hostname", "Serial Number", "Previous User",
-                     "New User", "Reassigned At", "Admin", "Department", "Reason"])
+                     "New User", "Reassigned At", "Admin", "Department", "Reason", "Condition"])
     for r in records:
         writer.writerow([
             r.id, r.device_id, r.hostname, r.serial_number or "",
             r.previous_user or "", r.new_user,
             r.reassigned_at.isoformat() if r.reassigned_at else "",
-            r.admin_user, r.department or "", r.reason or ""
+            r.admin_user, r.department or "", r.reason or "", r.condition or ""
         ])
 
     output.seek(0)

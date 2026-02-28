@@ -20,6 +20,7 @@ const DEPARTMENTS = [
 
 const SetDepartmentModal = ({ device, darkMode, onClose, onSuccess }) => {
     const [department, setDepartment] = useState(device.department || '')
+    const [condition, setCondition] = useState(device.condition || 'Functioning')
     const [adminUser, setAdminUser] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
@@ -48,7 +49,7 @@ const SetDepartmentModal = ({ device, darkMode, onClose, onSuccess }) => {
                 {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ department }),
+                    body: JSON.stringify({ department, condition }),
                 }
             )
             if (!res.ok) {
@@ -78,7 +79,7 @@ const SetDepartmentModal = ({ device, darkMode, onClose, onSuccess }) => {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <Building2 size={22} color="#1976D2" />
-                        <h2 style={{ margin: 0, fontSize: '1.2rem' }}>Set Department</h2>
+                        <h2 style={{ margin: 0, fontSize: '1.2rem' }}>Edit Device Info</h2>
                     </div>
                     <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: labelColor }}>
                         <X size={20} />
@@ -136,6 +137,27 @@ const SetDepartmentModal = ({ device, darkMode, onClose, onSuccess }) => {
                         </select>
                     </div>
 
+                    {/* Condition Dropdown */}
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: labelColor }}>
+                            Condition <span style={{ color: '#E53935' }}>*</span>
+                        </label>
+                        <select
+                            value={condition}
+                            onChange={e => setCondition(e.target.value)}
+                            style={{
+                                width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px',
+                                border: `1px solid ${border}`, backgroundColor: inputBg,
+                                color: text, fontSize: '0.95rem', boxSizing: 'border-box',
+                                cursor: 'pointer', outline: 'none'
+                            }}
+                        >
+                            <option value="Functioning">Functioning</option>
+                            <option value="Faulty">Faulty</option>
+                            <option value="Decommissioned">Decommissioned</option>
+                        </select>
+                    </div>
+
                     {/* Admin Name */}
                     <div style={{ marginBottom: '1.5rem' }}>
                         <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: labelColor }}>
@@ -177,7 +199,7 @@ const SetDepartmentModal = ({ device, darkMode, onClose, onSuccess }) => {
                             color: 'white', cursor: loading ? 'not-allowed' : 'pointer',
                             fontWeight: 'bold', fontSize: '0.9rem'
                         }}>
-                            {loading ? 'Saving…' : 'Save Department'}
+                            {loading ? 'Saving…' : 'Save Info'}
                         </button>
                     </div>
                 </form>

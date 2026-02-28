@@ -11,7 +11,7 @@ const ReassignModal = ({ device, darkMode, onClose, onSuccess }) => {
     const handleSubmit = async (e) => {
         e.preventDefault()
         if (!newUser.trim() || !adminUser.trim()) {
-            setError('New User and Admin fields are required.')
+            setError('New Owner and Admin fields are required.')
             return
         }
         setLoading(true)
@@ -77,7 +77,7 @@ const ReassignModal = ({ device, darkMode, onClose, onSuccess }) => {
                     {/* Previous User (read only) */}
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: labelColor }}>
-                            Previous User
+                            Previous Owner
                         </label>
                         <input
                             value={device.current_user || '(unassigned)'}
@@ -93,12 +93,12 @@ const ReassignModal = ({ device, darkMode, onClose, onSuccess }) => {
                     {/* New User */}
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: labelColor }}>
-                            New User <span style={{ color: '#E53935' }}>*</span>
+                            New Owner <span style={{ color: '#E53935' }}>*</span>
                         </label>
                         <input
                             value={newUser}
                             onChange={e => setNewUser(e.target.value)}
-                            placeholder="Enter new user's name"
+                            placeholder="Enter new owner's name"
                             style={{
                                 width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px',
                                 border: `1px solid ${border}`, backgroundColor: inputBg,

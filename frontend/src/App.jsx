@@ -62,6 +62,7 @@ function App() {
   const [deleteTarget, setDeleteTarget] = useState(null) // device to confirm delete
   // All Devices dept filter
   const [deptFilter, setDeptFilter] = useState('All')
+  const [conditionFilter, setConditionFilter] = useState('All')
 
   // Theme State
   const [darkMode, setDarkMode] = useState(() => {
@@ -113,16 +114,15 @@ function App() {
         return (diffMs >= 10800000 && diffMs < 86400000) || diffMs < 600000; // 3-24 hrs OR < 10 mins (online)
       }
       if (activeTab === 'all') {
-        if (deptFilter !== 'All') {
-          return (device.department || '') === deptFilter
-        }
-        return true
+        const matchesDept = deptFilter === 'All' || (device.department || '') === deptFilter;
+        const matchesCondition = conditionFilter === 'All' || (device.condition || 'Functioning') === conditionFilter;
+        return matchesDept && matchesCondition;
       }
       if (activeTab === 'desktop') return device.system_type === 'Desktop'
       if (activeTab === 'laptop') return device.system_type === 'Laptop'
       return true
     })
-  }, [uniqueDevices, activeTab, deptFilter])
+  }, [uniqueDevices, activeTab, deptFilter, conditionFilter])
 
   // Unique departments for filter dropdown (All Devices tab)
   const uniqueDepartments = useMemo(() => {
@@ -152,6 +152,15 @@ function App() {
       case 'Under Repair': return { bg: '#FFF3E0', text: '#E65100' }
       case 'Retired': return { bg: '#F5F5F5', text: '#757575' }
       default: return { bg: '#E8F5E9', text: '#2E7D32' } // Assigned
+    }
+  }
+
+  // Condition badge colors
+  const conditionColor = (condition) => {
+    switch (condition) {
+      case 'Faulty': return { bg: '#FFEBEE', text: '#C62828' }
+      case 'Decommissioned': return { bg: '#F5F5F5', text: '#757575' }
+      default: return { bg: '#E8F5E9', text: '#2E7D32' } // Functioning
     }
   }
 
@@ -477,14 +486,31 @@ function App() {
                             <option key={d} value={d}>{d === 'All' ? 'All Departments' : d}</option>
                           ))}
                         </select>
-                        {deptFilter !== 'All' && (
+                        <span style={{ fontSize: '0.85rem', color: darkMode ? '#aaa' : '#666', fontWeight: 'bold', marginLeft: '0.5rem' }}>Condition:</span>
+                        <select
+                          value={conditionFilter}
+                          onChange={e => setConditionFilter(e.target.value)}
+                          style={{
+                            padding: '5px 10px', borderRadius: '6px',
+                            border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                            backgroundColor: darkMode ? '#2c2c2c' : '#fff',
+                            color: darkMode ? '#e0e0e0' : '#333',
+                            fontSize: '0.875rem', cursor: 'pointer', outline: 'none'
+                          }}
+                        >
+                          <option value="All">All Conditions</option>
+                          <option value="Functioning">Functioning</option>
+                          <option value="Faulty">Faulty</option>
+                          <option value="Decommissioned">Decommissioned</option>
+                        </select>
+                        {(deptFilter !== 'All' || conditionFilter !== 'All') && (
                           <button
-                            onClick={() => setDeptFilter('All')}
+                            onClick={() => { setDeptFilter('All'); setConditionFilter('All'); }}
                             style={{
                               padding: '4px 10px', borderRadius: '6px', border: 'none',
                               backgroundColor: darkMode ? '#333' : '#eee',
                               color: darkMode ? '#ccc' : '#666',
-                              cursor: 'pointer', fontSize: '0.8rem'
+                              cursor: 'pointer', fontSize: '0.8rem', marginLeft: '0.5rem'
                             }}
                           >Clear</button>
                         )}
@@ -522,7 +548,7 @@ function App() {
                       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead style={{ backgroundColor: darkMode ? '#2c2c2c' : '#f5f5f5', borderBottom: `2px solid ${darkMode ? '#444' : '#e0e0e0'}` }}>
                           <tr>
-                            {['Hostname', 'User', 'Department', 'IP / OS / MAC', 'Hardware', 'Status', 'Asset Status', 'Last Seen', 'Actions'].map(h => (
+                            {['Hostname', 'Owner', 'Department', 'IP / OS / MAC', 'Hardware', 'Status', 'Condition', 'Asset Status', 'Last Seen', 'Actions'].map(h => (
                               <th key={h} style={{ padding: '1rem', color: darkMode ? '#aaa' : '#616161', fontSize: '0.85rem', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
                             ))}
                           </tr>
@@ -582,6 +608,15 @@ function App() {
                                 </td>
                                 <td style={{ padding: '1rem' }}>
                                   <span style={{
+                                    backgroundColor: darkMode ? '#333' : conditionColor(device.condition || 'Functioning').bg,
+                                    color: conditionColor(device.condition || 'Functioning').text,
+                                    padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold'
+                                  }}>
+                                    {device.condition || 'Functioning'}
+                                  </span>
+                                </td>
+                                <td style={{ padding: '1rem' }}>
+                                  <span style={{
                                     backgroundColor: darkMode ? '#333' : asc.bg, color: asc.text,
                                     padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold'
                                   }}>
@@ -609,9 +644,9 @@ function App() {
                                     >
                                       Reassign
                                     </button>
-                                    {activeTab === 'dashboard' && (
+                                    {(activeTab === 'dashboard' || activeTab === 'all') && (
                                       <button
-                                        onClick={() => setDeptTarget(device)} // Added Edit Dept button
+                                        onClick={() => setDeptTarget(device)}
                                         style={{
                                           padding: '4px 10px',
                                           backgroundColor: darkMode ? '#1a2a3a' : '#E3F2FD',
@@ -623,7 +658,7 @@ function App() {
                                           fontWeight: 'bold'
                                         }}
                                       >
-                                        Edit Dept
+                                        Edit Info
                                       </button>
                                     )}
                                     {activeTab === 'all' && (

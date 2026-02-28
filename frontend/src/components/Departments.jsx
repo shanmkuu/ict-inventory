@@ -127,7 +127,7 @@ const DepartmentContainer = ({ name, devices, darkMode }) => {
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                             <thead>
                                 <tr style={{ borderBottom: `1px solid ${border}` }}>
-                                    {['Hostname', 'Type', 'User', 'IP Address', 'Status'].map(h => (
+                                    {['Hostname', 'Type', 'Owner', 'IP Address', 'Status'].map(h => (
                                         <th key={h} style={{
                                             padding: '6px 10px', textAlign: 'left',
                                             color: subtle, fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 'bold'

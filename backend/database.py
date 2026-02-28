@@ -39,6 +39,7 @@ class Device(Base):
     asset_tag = Column(String, nullable=True)
     department = Column(String, nullable=True)
     asset_status = Column(String, default="Assigned")  # Available/Assigned/Under Repair/Retired
+    condition = Column(String, default="Functioning")  # Faulty/Functioning/Decommissioned
     purchase_date = Column(String, nullable=True)
     warranty_expiry = Column(String, nullable=True)
 
@@ -56,6 +57,7 @@ class AssignmentHistory(Base):
     admin_user = Column(String)
     department = Column(String, nullable=True)
     reason = Column(Text, nullable=True)
+    condition = Column(String, nullable=True)
     record_type = Column(String, default='REASSIGN')  # REASSIGN | DEPT_CHANGE
 
 
@@ -98,6 +100,7 @@ def _migrate_add_columns(connection):
         ("asset_tag", "VARCHAR"),
         ("department", "VARCHAR"),
         ("asset_status", "VARCHAR DEFAULT 'Assigned'"),
+        ("condition", "VARCHAR DEFAULT 'Functioning'"),
         ("purchase_date", "VARCHAR"),
         ("warranty_expiry", "VARCHAR"),
     ]
@@ -114,6 +117,7 @@ def _migrate_add_columns(connection):
     # Migrate assignment_history table
     new_cols_history = [
         ("record_type", "VARCHAR DEFAULT 'REASSIGN'"),
+        ("condition", "VARCHAR"),
     ]
     for col_name, col_type in new_cols_history:
         try:

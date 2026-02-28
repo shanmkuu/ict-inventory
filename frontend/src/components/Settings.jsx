@@ -31,7 +31,7 @@ const Settings = ({ devices, darkMode, toggleTheme }) => {
 
     const handleExportCSV = () => {
         // Generate CSV content
-        const headers = ['Hostname', 'IP Address', 'OS', 'System Type', 'GPU', 'RAM (GB)', 'Disk (GB)', 'User', 'Last Seen']
+        const headers = ['Hostname', 'IP Address', 'OS', 'System Type', 'GPU', 'RAM (GB)', 'Disk (GB)', 'Owner', 'Last Seen']
         const rows = devices.map(d => [
             d.hostname,
             d.ip_address,
