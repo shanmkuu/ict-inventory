@@ -51,24 +51,20 @@ class DiscoveryService:
             except Exception as e:
                 print(f"[AutoScan] Fallback detection also failed: {e}")
 
-        # Expand private /24 (or tighter) subnets to /22 to cover ~1000 hosts.
-        # This lets the scanner reach IPs past .254 by spanning adjacent blocks.
+        # Do not expand /24 subnets to /22 anymore to avoid overly broad scanning
         expanded = []
         for subnet_str in subnets:
-            try:
-                net = ipaddress.IPv4Network(subnet_str, strict=False)
-                if net.is_private and net.prefixlen >= 24:
-                    wider = net.supernet(new_prefix=22)
-                    expanded_str = str(wider)
-                    if expanded_str not in expanded:
-                        expanded.append(expanded_str)
-                    print(f"[AutoScan] Expanded {subnet_str} → {expanded_str} (~{wider.num_addresses - 2} hosts)")
-                else:
-                    if subnet_str not in expanded:
-                        expanded.append(subnet_str)
-            except Exception:
-                if subnet_str not in expanded:
-                    expanded.append(subnet_str)
+            # Filter out VirtualBox host-only network if present
+            if subnet_str.startswith("192.168.56."):
+                continue
+            if subnet_str not in expanded:
+                expanded.append(subnet_str)
+
+        # Explicitly append the requested subnets
+        explicit_subnets = ["10.10.0.0/24", "192.168.0.0/24"]
+        for subnet_str in explicit_subnets:
+            if subnet_str not in expanded:
+                expanded.append(subnet_str)
 
         print(f"[AutoScan] Final subnets to scan: {expanded}")
         return expanded
@@ -168,8 +164,11 @@ class DiscoveryService:
         
         results = []
         for host in live_hosts:
-            device_info = await self._analyze_host(host, communities)
-            results.append(device_info)
+            try:
+                device_info = await self._analyze_host(host, communities)
+                results.append(device_info)
+            except Exception as e:
+                print(f"Error analyzing host {host}: {e}")
             
         print(f"Scan complete. Found {len(results)} devices.")
         return results
@@ -297,8 +296,8 @@ class DiscoveryService:
                          info["hostname"] = f"{info['hostname']} ({web_info['title']})"
                  
                  # Refine type based on web info
-                 title_lower = web_info.get("title", "").lower()
-                 server_lower = web_info.get("server", "").lower()
+                 title_lower = (web_info.get("title") or "").lower()
+                 server_lower = (web_info.get("server") or "").lower()
                  
                  if "printer" in title_lower or "jetdirect" in server_lower:
                      info["device_type"] = "printer"
@@ -330,7 +329,7 @@ class DiscoveryService:
                     info["raw_snmp_data"] = json.dumps(snmp_data)
                     if "hostname" in snmp_data:
                         info["sys_name"] = snmp_data["hostname"]
-                    if "description" in snmp_data:
+                    if "description" in snmp_data and snmp_data["description"]:
                          desc = snmp_data["description"].lower()
                          if "windows" in desc: info["device_type"] = "server"
                          elif "linux" in desc: info["device_type"] = "server"
@@ -341,14 +340,15 @@ class DiscoveryService:
         # 6. Classification Logic (Refined)
         # Use Vendor Hints first if type is unknown
         if info["device_type"] == "unknown" and info["vendor"]:
-             v = info["vendor"].lower()
+             v = str(info["vendor"]).lower()
              if "apple" in v: info["device_type"] = "workstation" # or mobile
              elif "dell" in v or "lenovo" in v: info["device_type"] = "workstation"
              elif "hp" in v and 9100 in open_ports: info["device_type"] = "printer"
              elif "epson" in v or "brother" in v or "xerox" in v: info["device_type"] = "printer"
              elif "sony" in v or "samsung" in v or "lg" in v: info["device_type"] = "smart_tv"
-             elif "ubiquiti" in v or "cisco" in v or "netgear" in v: info["device_type"] = "network_appliance" # switch/ap
-
+             elif "ubiquiti" in v: info["device_type"] = "access_point" # default to AP, may be refined below
+             elif "cisco" in v or "netgear" in v: info["device_type"] = "switch"
+             elif "fortinet" in v or "palo alto" in v or "sonicwall" in v: info["device_type"] = "firewall"
 
         # Fallback Classification based on hostname keywords
         hostname = str(info.get("hostname", "")).lower()
@@ -362,8 +362,14 @@ class DiscoveryService:
                  else: info["device_type"] = "printer"
             elif "projector" in hostname or "benq" in hostname or "sony" in hostname:
                 info["device_type"] = "projector"
-            elif "switch" in hostname or "ubiquiti" in hostname or "unifi" in hostname or "cisco" in hostname:
+            elif "switch" in hostname or "sw" in hostname and not "windows" in hostname:
                 info["device_type"] = "switch"
+            elif "router" in hostname or "gateway" in hostname or "gw" in hostname:
+                info["device_type"] = "router"
+            elif "firewall" in hostname or "fw" in hostname:
+                info["device_type"] = "firewall"
+            elif "ap" in hostname or "wifi" in hostname or "unifi" in hostname or "access" in hostname:
+                info["device_type"] = "access_point"
             elif "tv" in hostname or "bravia" in hostname or "samsung" in hostname or "lg" in hostname:
                 info["device_type"] = "smart_tv"
 
@@ -376,7 +382,7 @@ class DiscoveryService:
                  info["device_type"] = "workstation" 
             elif 80 in open_ports or 443 in open_ports:
                  if 135 not in open_ports and 445 not in open_ports:
-                     info["device_type"] = "network_appliance"
+                     info["device_type"] = "router" # Guess router/switch for unknown web interfaces
                  
         return info
 
@@ -560,10 +566,10 @@ class DiscoveryService:
                 self.title = None
                 self.in_title = False
             def handle_starttag(self, tag, attrs):
-                if tag.lower() == 'title':
+                if tag and str(tag).lower() == 'title':
                     self.in_title = True
             def handle_endtag(self, tag):
-                if tag.lower() == 'title':
+                if tag and str(tag).lower() == 'title':
                     self.in_title = False
             def handle_data(self, data):
                 if self.in_title and not self.title:

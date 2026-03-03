@@ -124,6 +124,12 @@ const Records = ({ darkMode }) => {
                     </div>
                 </div>
                 <div style={{ backgroundColor: bg, borderRadius: '8px', padding: '1rem 1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', flex: 1, minWidth: '140px' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#9C27B0', textTransform: 'uppercase' }}>Added</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#9C27B0' }}>
+                        {records.filter(r => r.record_type === 'DEVICE_ADDED').length}
+                    </div>
+                </div>
+                <div style={{ backgroundColor: bg, borderRadius: '8px', padding: '1rem 1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', flex: 1, minWidth: '140px' }}>
                     <div style={{ fontSize: '0.8rem', color: muted, textTransform: 'uppercase' }}>Showing</div>
                     <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: text }}>{displayed.length}</div>
                 </div>
@@ -147,17 +153,17 @@ const Records = ({ darkMode }) => {
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
                     {/* Record type quick filter */}
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
-                        {['All', 'REASSIGN', 'DEPT_CHANGE', 'DEVICE_DELETED'].map(t => (
+                        {['All', 'REASSIGN', 'DEPT_CHANGE', 'DEVICE_ADDED', 'DEVICE_DELETED'].map(t => (
                             <button key={t} onClick={() => setFilterType(t)} style={{
                                 padding: '4px 12px', borderRadius: '12px', border: 'none', cursor: 'pointer',
                                 fontSize: '0.78rem', fontWeight: filterType === t ? 'bold' : 'normal',
                                 backgroundColor: filterType === t
-                                    ? (t === 'DEPT_CHANGE' ? '#1976D2' : t === 'REASSIGN' ? '#4CAF50' : t === 'DEVICE_DELETED' ? '#C62828' : (darkMode ? '#444' : '#555'))
+                                    ? (t === 'DEPT_CHANGE' ? '#1976D2' : t === 'REASSIGN' ? '#4CAF50' : t === 'DEVICE_DELETED' ? '#C62828' : t === 'DEVICE_ADDED' ? '#9C27B0' : (darkMode ? '#444' : '#555'))
                                     : (darkMode ? '#2a2a2a' : '#eee'),
                                 color: filterType === t ? 'white' : muted,
                                 whiteSpace: 'nowrap'
                             }}>
-                                {t === 'All' ? 'All Records' : t === 'REASSIGN' ? 'Owner Reassignments' : t === 'DEPT_CHANGE' ? 'Dept. Changes' : '🗑 Deletions'}
+                                {t === 'All' ? 'All Records' : t === 'REASSIGN' ? 'Owner Reassignments' : t === 'DEPT_CHANGE' ? 'Dept. Changes' : t === 'DEVICE_ADDED' ? '➕ Added Devices' : '🗑 Deletions'}
                             </button>
                         ))}
                     </div>
@@ -233,12 +239,20 @@ const Records = ({ darkMode }) => {
                                                 {(() => {
                                                     const isDeleted = r.record_type === 'DEVICE_DELETED'
                                                     const isDept = r.record_type === 'DEPT_CHANGE'
+                                                    const isAdded = r.record_type === 'DEVICE_ADDED'
                                                     if (isDeleted) return (
                                                         <span style={{
                                                             backgroundColor: darkMode ? '#3a1a1a' : '#FFEBEE',
                                                             color: '#C62828',
                                                             padding: '3px 8px', borderRadius: '10px', fontSize: '0.73rem', fontWeight: 'bold'
                                                         }}>🗑 Deleted</span>
+                                                    )
+                                                    if (isAdded) return (
+                                                        <span style={{
+                                                            backgroundColor: darkMode ? '#2d1b36' : '#F3E5F5',
+                                                            color: '#9C27B0',
+                                                            padding: '3px 8px', borderRadius: '10px', fontSize: '0.73rem', fontWeight: 'bold'
+                                                        }}>➕ Added</span>
                                                     )
                                                     return (
                                                         <span style={{

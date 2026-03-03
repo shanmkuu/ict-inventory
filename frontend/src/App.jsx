@@ -11,6 +11,7 @@ import SetDepartmentModal from './components/SetDepartmentModal'
 import Departments from './components/Departments'
 import DeleteConfirmModal from './components/DeleteConfirmModal'
 
+import ManualEntry from './components/ManualEntry'
 import LockdownScreen from './components/LockdownScreen'
 import ErrorBoundary from './components/ErrorBoundary'
 
@@ -50,6 +51,7 @@ const FallbackFooter = ({ darkMode }) => {
 
 function App() {
   const [devices, setDevices] = useState([])
+  const [networkDevices, setNetworkDevices] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [activeTab, setActiveTab] = useState('dashboard')
@@ -83,6 +85,13 @@ function App() {
       if (!response.ok) throw new Error('Failed to fetch devices')
       const data = await response.json()
       setDevices(data)
+
+      const netResponse = await fetch('/api/v1/network/devices')
+      if (netResponse.ok) {
+        const netData = await netResponse.json()
+        setNetworkDevices(netData)
+      }
+
       setError(null)
     } catch (err) {
       console.error(err)
@@ -139,6 +148,7 @@ function App() {
       case 'desktop': return 'System Units (Desktops)'
       case 'laptop': return 'Laptops'
       case 'network-devices': return 'Network Devices'
+      case 'manual-entry': return 'Add Device (Manual Entry)'
       case 'records': return 'Records – Assignment History'
       case 'settings': return 'Settings'
       default: return 'Dashboard'
@@ -326,8 +336,7 @@ function App() {
       fontFamily: 'Arial, sans-serif', color: darkMode ? '#e0e0e0' : '#333'
     }}>
 
-      {/* 🛡️ SECURITY SENTINEL + SELF-HEALING HUB
-          Always mounted (hidden during lockdown) to detect pulse restoration.
+      {/* 
       */}
       <div style={{ display: 'none' }}>
         <ErrorBoundary
@@ -440,7 +449,7 @@ function App() {
                 {/* Dashboard Charts */}
                 {activeTab === 'dashboard' && (
                   <>
-                    <DashboardCharts devices={devices} darkMode={darkMode} />
+                    <DashboardCharts devices={devices} networkDevices={networkDevices} darkMode={darkMode} />
                     <h2 style={{ fontSize: '1.2rem', color: darkMode ? '#bbb' : '#555', marginTop: '2rem', marginBottom: '1rem' }}>Recent Activity</h2>
                   </>
                 )}
@@ -448,6 +457,8 @@ function App() {
                 {/* Tab Routing */}
                 {activeTab === 'settings' ? (
                   <Settings devices={devices} darkMode={darkMode} toggleTheme={toggleTheme} />
+                ) : activeTab === 'manual-entry' ? (
+                  <ManualEntry darkMode={darkMode} onSuccess={() => { fetchDevices(); setActiveTab('all'); }} />
                 ) : activeTab === 'network-devices' ? (
                   <NetworkDevices darkMode={darkMode} />
                 ) : activeTab === 'records' ? (

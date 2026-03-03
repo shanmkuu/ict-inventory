@@ -13,6 +13,9 @@ import uuid
 import os
 from datetime import datetime
 
+# Avoid terminal popup when running subprocess on Windows
+CREATE_NO_WINDOW = 0x08000000 if platform.system() == "Windows" else 0
+
 # Determine base path for logging (and config)
 if getattr(sys, 'frozen', False):
     base_path = os.path.dirname(sys.executable)
@@ -105,7 +108,7 @@ def install_service():
     ]
     
     try:
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=CREATE_NO_WINDOW)
         if result.returncode == 0:
             print(f"SUCCESS: Service installed. The agent will run automatically at the next system startup.")
         else:
@@ -122,7 +125,7 @@ def get_machine_uuid():
     try:
         if platform.system() == "Windows":
             cmd = "powershell \"(Get-CimInstance Win32_ComputerSystemProduct).UUID\""
-            return subprocess.check_output(cmd, shell=True).decode().strip()
+            return subprocess.check_output(cmd, shell=True, creationflags=CREATE_NO_WINDOW).decode().strip()
     except:
         pass
     return None
@@ -132,7 +135,7 @@ def get_serial_number_hw():
     try:
         if platform.system() == "Windows":
             cmd = "powershell \"(Get-CimInstance Win32_BIOS).SerialNumber\""
-            return subprocess.check_output(cmd, shell=True).decode().strip()
+            return subprocess.check_output(cmd, shell=True, creationflags=CREATE_NO_WINDOW).decode().strip()
     except:
         pass
     return None
@@ -166,7 +169,7 @@ def get_gpu_info():
     try:
         if platform.system() == "Windows":
             cmd = "powershell \"Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name\""
-            output = subprocess.check_output(cmd, shell=True).decode().strip()
+            output = subprocess.check_output(cmd, shell=True, creationflags=CREATE_NO_WINDOW).decode().strip()
             # Output might contain multiple lines if multiple GPUs
             lines = [line.strip() for line in output.split('\r\n') if line.strip()]
             if lines:
@@ -197,10 +200,23 @@ def get_mac_address():
         for iface_name, addrs in interfaces.items():
             # Skip loopback and virtual/tunneling adapters
             lower = iface_name.lower()
-            if any(skip in lower for skip in ('loopback', 'lo', 'vethernet', 'vmware', 'virtualbox', 'pseudo', 'teredo')):
+            if any(skip in lower for skip in ('loopback', 'lo', 'vethernet', 'vmware', 'virtualbox', 'pseudo', 'teredo', 'npcap', 'docker', 'vpn', 'tailscale', 'zerotier')):
                 continue
             for addr in addrs:
                 if addr.family == AF_LINK and addr.address and addr.address != '00-00-00-00-00-00':
+                    
+                    # Optional extra filter for locally administered MACs (like VirtualBox "0A-00-27-xx")
+                    mac_clean = addr.address.replace(':', '').replace('-', '').upper()
+                    if len(mac_clean) == 12:
+                        # Locally administered macs have 2, 6, A, or E as the second char
+                        second_char = mac_clean[1]
+                        if second_char in ('2', '6', 'A', 'E'):
+                            continue
+                            
+                        # Also skip strictly known VirtualBox prefixes 08:00:27
+                        if mac_clean.startswith('080027'):
+                            continue
+                            
                     return addr.address.upper()
     except Exception:
         pass
@@ -213,7 +229,7 @@ def get_physical_disk_capacity():
     try:
         if platform.system() == "Windows":
             cmd = "powershell \"(Get-PhysicalDisk | Measure-Object -Property Size -Sum).Sum\""
-            output = subprocess.check_output(cmd, shell=True).decode().strip()
+            output = subprocess.check_output(cmd, shell=True, creationflags=CREATE_NO_WINDOW).decode().strip()
             if output:
                 total_bytes = int(output)
                 return round(total_bytes / (1024**3), 2)

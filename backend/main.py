@@ -110,6 +110,12 @@ def receive_heartbeat(
         for key, value in device_data.dict().items():
             if key in AGENT_PROTECTED_FIELDS:
                 continue  # Never let heartbeats overwrite admin-set fields
+            
+            # Prevent agent from overwriting the mac_address since it often sends the wrong one.
+            # We rely on the periodic network discovery scan (ARP) to correct the MAC address.
+            if key == "mac_address" and db_device.mac_address and db_device.mac_address != value:
+                continue
+
             if value is not None:
                 setattr(db_device, key, value)
         db_device.last_seen = datetime.now(timezone.utc)
@@ -128,6 +134,54 @@ def receive_heartbeat(
 
 
 # ── Devices ───────────────────────────────────────────────────────────────────
+
+# ── Manual Device Entry ────────────────────────────────────────────────────────
+
+@app.post("/api/v1/devices", response_model=schemas.Device)
+def create_manual_device(
+    device_data: schemas.DeviceCreate,
+    admin: str = Query(default="admin", description="Admin performing the addition"),
+    db: Session = Depends(get_db)
+):
+    """Manually add a new device to the inventory."""
+    # Ensure device_id is unique
+    existing = db.query(database.Device).filter(database.Device.device_id == device_data.device_id).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Device with this ID already exists.")
+    
+    # Optional MAC check to prevent duplicates
+    if device_data.mac_address:
+        existing_mac = db.query(database.Device).filter(database.Device.mac_address == device_data.mac_address).first()
+        if existing_mac:
+            raise HTTPException(status_code=400, detail="Device with this MAC address already exists.")
+
+    new_device_data = device_data.dict(exclude={"timestamp"})
+    db_device = database.Device(**new_device_data)
+    db_device.last_seen = datetime.now(timezone.utc)
+    
+    db.add(db_device)
+    _write_audit(db, "DEVICE_MANUAL_ADD", db_device.device_id, db_device.hostname, admin, f"Device manually added: {db_device.hostname}")
+    
+    # Add assignment history record
+    add_record = database.AssignmentHistory(
+        device_id=db_device.device_id,
+        hostname=db_device.hostname,
+        serial_number=db_device.serial_number,
+        previous_user="(None)",
+        new_user=db_device.current_user or "(None)",
+        reassigned_at=datetime.now(timezone.utc),
+        admin_user=admin,
+        department=db_device.department,
+        reason=f"Device manually added — {db_device.hostname}",
+        condition=db_device.condition,
+        record_type='DEVICE_ADDED',
+    )
+    db.add(add_record)
+    
+    db.commit()
+    db.refresh(db_device)
+    return enrich_device_status(db_device)
+
 
 @app.get("/api/v1/devices", response_model=List[schemas.Device])
 def list_devices(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):

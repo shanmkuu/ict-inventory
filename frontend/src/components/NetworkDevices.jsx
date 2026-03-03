@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { RefreshCw, Wifi, WifiOff, Activity, Clock, Radio } from 'lucide-react';
+import { RefreshCw, Wifi, WifiOff, Activity, Clock, Radio, Trash2 } from 'lucide-react';
 
 // ── Status Bar ────────────────────────────────────────────────────────────────
 
@@ -198,12 +198,28 @@ const NetworkDevices = ({ darkMode }) => {
                 const body = await res.json().catch(() => ({}));
                 throw new Error(body.detail || 'Failed to start scan');
             }
-            // Immediately refresh status
             await fetchScanStatus();
         } catch (err) {
             setError(`Scan failed: ${err.message}`);
         } finally {
             setScanning(false);
+        }
+    };
+
+    const handleDeleteDevice = async (deviceId, deviceName) => {
+        if (!window.confirm(`Are you sure you want to delete ${deviceName}? This device will be removed from the inventory until it is detected again in a scan.`)) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/v1/network/devices/${deviceId}`, { method: 'DELETE' });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body.detail || 'Failed to delete device');
+            }
+            fetchDevices();
+        } catch (err) {
+            setError(`Delete failed: ${err.message}`);
         }
     };
 
@@ -281,21 +297,30 @@ const NetworkDevices = ({ darkMode }) => {
                                 <th style={{ padding: '0.85rem 1rem' }}>MAC</th>
                                 <th style={{ padding: '0.85rem 1rem' }}>Open Ports</th>
                                 <th style={{ padding: '0.85rem 1rem' }}>Status</th>
+                                <th style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {devices.map(device => {
-                                // Primary: use system_status from DB (set by the scanner).
-                                // Fallback: time-based check if system_status is missing.
-                                const isOnline = device.system_status
-                                    ? device.system_status === 'online'
-                                    : (() => {
-                                        const ms = device.last_seen
-                                            ? new Date(device.last_seen.endsWith('Z') ? device.last_seen : device.last_seen + 'Z').getTime()
-                                            : 0;
-                                        return ms > 0 && (Date.now() - ms) < 900000; // 15-min fallback
-                                    })();
-                                return (
+                            {(() => {
+                                // 1. Determine online status for each device
+                                const processedDevices = devices.map(device => {
+                                    const isOnline = device.system_status
+                                        ? device.system_status === 'online'
+                                        : (() => {
+                                            const ms = device.last_seen
+                                                ? new Date(device.last_seen.endsWith('Z') ? device.last_seen : device.last_seen + 'Z').getTime()
+                                                : 0;
+                                            return ms > 0 && (Date.now() - ms) < 900000; // 15-min fallback
+                                        })();
+                                    return { ...device, isOnline };
+                                });
+
+                                // 2. Split into online and offline
+                                const onlineDevices = processedDevices.filter(d => d.isOnline);
+                                const offlineDevices = processedDevices.filter(d => !d.isOnline);
+
+                                // Helper to render a row
+                                const renderRow = (device) => (
                                     <tr
                                         key={device.id}
                                         onClick={() => setSelectedDevice(device)}
@@ -324,26 +349,94 @@ const NetworkDevices = ({ darkMode }) => {
                                         </td>
                                         <td style={{ padding: '0.85rem 1rem' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                {isOnline
+                                                {device.isOnline
                                                     ? <Wifi size={13} style={{ color: '#22c55e' }} />
                                                     : <WifiOff size={13} style={{ color: '#9ca3af' }} />
                                                 }
-                                                <span style={{ color: isOnline ? '#22c55e' : '#9ca3af', fontWeight: 600, fontSize: '0.82rem' }}>
-                                                    {isOnline ? 'Online' : 'Offline'}
+                                                <span style={{ color: device.isOnline ? '#22c55e' : '#9ca3af', fontWeight: 600, fontSize: '0.82rem' }}>
+                                                    {device.isOnline ? 'Online' : 'Offline'}
                                                 </span>
                                             </div>
-                                            {!isOnline && device.last_seen && (
+                                            {!device.isOnline && device.last_seen && (
                                                 <div style={{ fontSize: '0.72rem', color: '#666', marginTop: '2px' }}>
                                                     Last seen: {new Date(device.last_seen.endsWith('Z') ? device.last_seen : device.last_seen + 'Z').toLocaleString()}
                                                 </div>
                                             )}
                                         </td>
+                                        <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
+                                            {!device.isOnline && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteDevice(device.id, device.hostname || device.ip_address);
+                                                    }}
+                                                    title="Delete offline device"
+                                                    style={{
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                        color: '#ef4444',
+                                                        padding: '4px',
+                                                        borderRadius: '4px',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        transition: 'background-color 0.2s',
+                                                    }}
+                                                    onMouseEnter={e => e.currentTarget.style.backgroundColor = darkMode ? 'rgba(239, 68, 68, 0.1)' : '#fee2e2'}
+                                                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            )}
+                                        </td>
                                     </tr>
                                 );
-                            })}
+
+                                const rows = [];
+
+                                // 3. Render Online Devices
+                                if (onlineDevices.length > 0) {
+                                    onlineDevices.forEach(d => rows.push(renderRow(d)));
+                                }
+
+                                // 4. Add Separator Header if we have both
+                                if (onlineDevices.length > 0 && offlineDevices.length > 0) {
+                                    rows.push(
+                                        <tr key="offline-separator" style={{ backgroundColor: darkMode ? '#1a1a1a' : '#f8f9fa' }}>
+                                            <td colSpan="6" style={{
+                                                padding: '8px 16px',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 'bold',
+                                                color: darkMode ? '#555' : '#999',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.05em',
+                                                borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}`
+                                            }}>
+                                                Offline Devices
+                                            </td>
+                                        </tr>
+                                    );
+                                } else if (onlineDevices.length === 0 && offlineDevices.length > 0) {
+                                    // Header for only offline
+                                    rows.push(
+                                        <tr key="offline-header" style={{ backgroundColor: darkMode ? '#1a1a1a' : '#f8f9fa' }}>
+                                            <td colSpan="6" style={{ padding: '8px 16px', fontSize: '0.75rem', fontWeight: 'bold', color: '#9ca3af' }}>
+                                                No online devices detected — Showing offline devices
+                                            </td>
+                                        </tr>
+                                    );
+                                }
+
+                                // 5. Render Offline Devices
+                                offlineDevices.forEach(d => rows.push(renderRow(d)));
+
+                                return rows;
+                            })()}
+
                             {devices.length === 0 && !loading && (
                                 <tr>
-                                    <td colSpan="5" style={{ padding: '3rem', textAlign: 'center', color: '#888' }}>
+                                    <td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: '#888' }}>
                                         No network devices found yet. A scan will start automatically, or click <strong>Scan Now</strong>.
                                     </td>
                                 </tr>

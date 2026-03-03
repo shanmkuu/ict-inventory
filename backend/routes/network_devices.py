@@ -90,6 +90,18 @@ def delete_network_device(device_id: int, db: Session = Depends(get_db)):
     return None
 
 
+@router.delete("/clear", status_code=204)
+def clear_all_network_devices(db: Session = Depends(get_db)):
+    """Deletes all records from the network_devices table."""
+    try:
+        db.query(database.NetworkDevice).delete()
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    return None
+
+
 @router.post("/scan")
 async def start_network_scan(background_tasks: BackgroundTasks, subnet: Optional[str] = None):
     """
@@ -159,6 +171,16 @@ async def run_scan_task(subnets: list):
                 d_type = device_info.get("device_type", "unknown")
                 excluded_types = ["workstation", "server", "computer", "mobile", "phone", "tablet", "laptop", "desktop"]
                 if d_type in excluded_types:
+                    # Update actual MAC in Devices table if found
+                    mac = device_info.get("mac_address")
+                    ip = device_info.get("ip_address")
+                    if mac and ip:
+                        db_device = scan_db.query(database.Device).filter(
+                            database.Device.ip_address == ip
+                        ).first()
+                        if db_device and db_device.mac_address != mac:
+                            print(f"[Scan] Correcting MAC address for {db_device.hostname} from {db_device.mac_address} to {mac}")
+                            db_device.mac_address = mac
                     continue
 
                 # Look up by MAC first, then IP
@@ -189,9 +211,11 @@ async def run_scan_task(subnets: list):
                             existing_dev.hostname = device_info["hostname"]
 
                     if device_info.get("device_type") and device_info["device_type"] != "unknown":
-                        if existing_dev.device_type != "unknown" and device_info["device_type"] == "network_appliance":
-                            pass
-                        else:
+                        # If existing is generic, and new is specific, upgrade it
+                        networking_types = ["switch", "router", "access_point", "firewall", "printer", "camera", "media_player", "projector", "smart_tv"]
+                        if existing_dev.device_type not in networking_types and device_info["device_type"] in networking_types:
+                            existing_dev.device_type = device_info["device_type"]
+                        elif existing_dev.device_type == "unknown":
                             existing_dev.device_type = device_info["device_type"]
 
                     if "open_ports" in device_info:

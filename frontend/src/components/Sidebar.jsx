@@ -1,6 +1,6 @@
 import React from 'react'
 import logo from '../assets/icon_logo.png'
-import { LayoutDashboard, Monitor, Laptop, Server, Settings, Network, ClipboardList, Building2 } from 'lucide-react'
+import { LayoutDashboard, Monitor, Laptop, Server, Settings, Network, ClipboardList, Building2, PlusCircle } from 'lucide-react'
 
 const Sidebar = ({ activeTab, onTabChange, darkMode }) => {
     const menuItems = [
@@ -10,6 +10,7 @@ const Sidebar = ({ activeTab, onTabChange, darkMode }) => {
         { id: 'desktop', label: 'System Units', icon: Monitor },
         { id: 'laptop', label: 'Laptops', icon: Laptop },
         { id: 'network-devices', label: 'Network Devices', icon: Network },
+        { id: 'manual-entry', label: 'Add Device', icon: PlusCircle },
         { id: 'records', label: 'Records', icon: ClipboardList },
         { id: 'settings', label: 'Settings', icon: Settings },
     ]
