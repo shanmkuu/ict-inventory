@@ -142,7 +142,7 @@ function App() {
 
   const getPageTitle = () => {
     switch (activeTab) {
-      case 'dashboard': return 'System Units Overview'
+      case 'dashboard': return 'Overview'
       case 'all': return 'All Devices'
       case 'departments': return 'Departments'
       case 'desktop': return 'System Units (Desktops)'
