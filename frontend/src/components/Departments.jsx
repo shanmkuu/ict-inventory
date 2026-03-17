@@ -18,7 +18,7 @@ const DEPARTMENTS = [
     'CPRD',
 ]
 
-const DEVICE_TYPES = ['All', 'Desktop', 'Laptop', 'Server', 'Other']
+const DEVICE_TYPES = ['All', 'Desktop', 'Laptop']
 
 const statusColor = (device) => {
     if (!device.last_seen) return '#BDBDBD'
@@ -33,12 +33,6 @@ const DepartmentContainer = ({ name, devices, darkMode }) => {
 
     const filteredDevices = useMemo(() => {
         if (typeFilter === 'All') return devices
-        if (typeFilter === 'Other') {
-            return devices.filter(d => {
-                const t = (d.system_type || '').toLowerCase()
-                return !['desktop', 'laptop', 'server'].some(k => t.includes(k))
-            })
-        }
         return devices.filter(d =>
             (d.system_type || '').toLowerCase().includes(typeFilter.toLowerCase())
         )

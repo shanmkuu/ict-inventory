@@ -109,7 +109,11 @@ const ChartCard = ({ title, children, darkMode, height = 220 }) => (
     </div>
 )
 
-const DashboardCharts = ({ devices, networkDevices = [], darkMode }) => {
+const DashboardCharts = ({ devices, networkDevices: rawNetworkDevices = [], darkMode }) => {
+    const networkDevices = useMemo(() =>
+        rawNetworkDevices.filter(d => (d.device_type || '').toLowerCase() !== 'unknown'),
+        [rawNetworkDevices])
+
     const now = new Date()
 
     const computerOnlineCount = useMemo(() =>
@@ -129,7 +133,7 @@ const DashboardCharts = ({ devices, networkDevices = [], darkMode }) => {
         }).length, [networkDevices])
 
     const onlineDeviceCounts = useMemo(() => {
-        const counts = { desktop: 0, laptop: 0, mac: 0, printer: 0, switch: 0, router: 0, ap: 0 }
+        const counts = { desktop: 0, laptop: 0, mac: 0, printer: 0, switch: 0, router: 0, tv: 0 }
         devices.forEach(d => {
             const ds = d.last_seen.endsWith('Z') ? d.last_seen : d.last_seen + 'Z'
             if ((now - new Date(ds)) < 600000) {
@@ -153,7 +157,7 @@ const DashboardCharts = ({ devices, networkDevices = [], darkMode }) => {
                 if (type === 'printer') counts.printer++
                 else if (type === 'switch') counts.switch++
                 else if (type === 'router') counts.router++
-                else if (type === 'access_point' || type === 'ap') counts.ap++
+                else if (type === 'smart_tv' || type === 'tv') counts.tv++
             }
         })
         return counts
@@ -163,7 +167,7 @@ const DashboardCharts = ({ devices, networkDevices = [], darkMode }) => {
     const totalOnline = computerOnlineCount + networkOnlineCount
 
     const deviceCounts = useMemo(() => {
-        const counts = { desktop: 0, laptop: 0, mac: 0, printer: 0, switch: 0, router: 0, ap: 0 }
+        const counts = { desktop: 0, laptop: 0, mac: 0, printer: 0, switch: 0, router: 0, tv: 0 }
         devices.forEach(d => {
             const sysType = (d.system_type || '').toLowerCase()
             const os = (d.os_type || d.os_name || '').toLowerCase()
@@ -177,7 +181,7 @@ const DashboardCharts = ({ devices, networkDevices = [], darkMode }) => {
             if (type === 'printer') counts.printer++
             else if (type === 'switch') counts.switch++
             else if (type === 'router') counts.router++
-            else if (type === 'access_point' || type === 'ap') counts.ap++
+            else if (type === 'smart_tv' || type === 'tv') counts.tv++
         })
         return counts
     }, [devices, networkDevices])
@@ -256,7 +260,7 @@ const DashboardCharts = ({ devices, networkDevices = [], darkMode }) => {
                         <MiniStatCard label="Printers" value={deviceCounts.printer} color="#94a3b8" darkMode={darkMode} />
                         <MiniStatCard label="Switches" value={deviceCounts.switch} color="#f97316" darkMode={darkMode} />
                         <MiniStatCard label="Routers" value={deviceCounts.router} color="#64748b" darkMode={darkMode} />
-                        <MiniStatCard label="Access Points" value={deviceCounts.ap} color="#0ea5e9" darkMode={darkMode} />
+                        <MiniStatCard label="Smart TV" value={deviceCounts.tv} color="#0ea5e9" darkMode={darkMode} />
 
                         {/* Multi-Condition Card */}
                         <div style={{
@@ -342,7 +346,7 @@ const DashboardCharts = ({ devices, networkDevices = [], darkMode }) => {
                                 <span style={{ color: darkMode ? '#4b5563' : '#cbd5e1' }}>|</span>
                                 <span>Switches: <strong style={{ color: darkMode ? '#fff' : '#000' }}>{onlineDeviceCounts.switch}</strong></span>
                                 <span style={{ color: darkMode ? '#4b5563' : '#cbd5e1' }}>|</span>
-                                <span>APs: <strong style={{ color: darkMode ? '#fff' : '#000' }}>{onlineDeviceCounts.ap}</strong></span>
+                                <span>Smart TV: <strong style={{ color: darkMode ? '#fff' : '#000' }}>{onlineDeviceCounts.tv}</strong></span>
                                 <span style={{ color: darkMode ? '#4b5563' : '#cbd5e1' }}>|</span>
                                 <span>Printers: <strong style={{ color: darkMode ? '#fff' : '#000' }}>{onlineDeviceCounts.printer}</strong></span>
                             </div>

@@ -62,9 +62,12 @@ function App() {
   const [deptTarget, setDeptTarget] = useState(null) // device object or null
   // Delete confirmation modal state
   const [deleteTarget, setDeleteTarget] = useState(null) // device to confirm delete
-  // All Devices dept filter
+  // All Devices filters
   const [deptFilter, setDeptFilter] = useState('All')
   const [conditionFilter, setConditionFilter] = useState('All')
+
+  // Sorting
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
 
   // Theme State
   const [darkMode, setDarkMode] = useState(() => {
@@ -110,13 +113,18 @@ function App() {
   // We no longer deduplicate here since the backend now merges duplicates by MAC.
   // We want admins to see all actual DB records so they can delete old phantom ones.
   const uniqueDevices = useMemo(() => {
-    return devices
-  }, [devices])
+    const knownNetworkDevices = networkDevices.filter(d => (d.device_type || '').toLowerCase() !== 'unknown');
+    return [...devices, ...knownNetworkDevices]
+  }, [devices, networkDevices])
 
   // Filtering Logic
   const filteredDevices = useMemo(() => {
     return uniqueDevices.filter(device => {
       if (activeTab === 'dashboard') {
+        const dType = (device.system_type || device.device_type || '').toLowerCase();
+        const isLaptopOrDesktop = dType === 'laptop' || dType === 'desktop';
+        if (!isLaptopOrDesktop) return false;
+
         // "Recent Activity" -> show devices last seen >= 3 hours ago AND < 24 hours ago, OR currently online (<10 mins)
         const dateStr = device.last_seen.endsWith('Z') ? device.last_seen : device.last_seen + 'Z';
         const diffMs = Date.now() - new Date(dateStr).getTime();
@@ -125,13 +133,69 @@ function App() {
       if (activeTab === 'all') {
         const matchesDept = deptFilter === 'All' || (device.department || '') === deptFilter;
         const matchesCondition = conditionFilter === 'All' || (device.condition || 'Functioning') === conditionFilter;
-        return matchesDept && matchesCondition;
+
+        const dType = (device.system_type || device.device_type || '').toLowerCase();
+        const isLaptopOrDesktop = dType === 'laptop' || dType === 'desktop';
+
+        return matchesDept && matchesCondition && isLaptopOrDesktop;
       }
       if (activeTab === 'desktop') return device.system_type === 'Desktop'
       if (activeTab === 'laptop') return device.system_type === 'Laptop'
       return true
     })
   }, [uniqueDevices, activeTab, deptFilter, conditionFilter])
+
+  // Sorting Logic
+  const sortedAndFilteredDevices = useMemo(() => {
+    let sortableItems = [...filteredDevices]
+    if (sortConfig.key !== null) {
+      sortableItems.sort((a, b) => {
+        let aValue = a[sortConfig.key]
+        let bValue = b[sortConfig.key]
+
+        if (sortConfig.key === 'last_seen') {
+          const aDateStr = aValue.endsWith('Z') ? aValue : aValue + 'Z'
+          const bDateStr = bValue.endsWith('Z') ? bValue : bValue + 'Z'
+          aValue = new Date(aDateStr).getTime()
+          bValue = new Date(bDateStr).getTime()
+        } else if (sortConfig.key === 'status') {
+          const isOnlineA = (Date.now() - new Date(a.last_seen.endsWith('Z') ? a.last_seen : a.last_seen + 'Z').getTime()) < 600000
+          const isOnlineB = (Date.now() - new Date(b.last_seen.endsWith('Z') ? b.last_seen : b.last_seen + 'Z').getTime()) < 600000
+          aValue = isOnlineA ? 1 : 0
+          bValue = isOnlineB ? 1 : 0
+        } else if (sortConfig.key === 'hardware') {
+          aValue = (a.ram_total_gb || 0) + (a.disk_total_gb || 0)
+          bValue = (b.ram_total_gb || 0) + (b.disk_total_gb || 0)
+        } else if (sortConfig.key === 'ip_os_mac') {
+          aValue = a.ip_address || ''
+          bValue = b.ip_address || ''
+        } else if (typeof aValue === 'string') {
+          aValue = aValue.toLowerCase()
+          bValue = (bValue || '').toLowerCase()
+        }
+
+        if (aValue === undefined || aValue === null) aValue = ''
+        if (bValue === undefined || bValue === null) bValue = ''
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'asc' ? -1 : 1
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'asc' ? 1 : -1
+        }
+        return 0
+      })
+    }
+    return sortableItems
+  }, [filteredDevices, sortConfig])
+
+  const requestSort = (key) => {
+    let direction = 'asc'
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc'
+    }
+    setSortConfig({ key, direction })
+  }
 
   // Unique departments for filter dropdown (All Devices tab)
   const uniqueDepartments = useMemo(() => {
@@ -464,7 +528,13 @@ function App() {
                 ) : activeTab === 'records' ? (
                   <Records darkMode={darkMode} />
                 ) : activeTab === 'departments' ? (
-                  <Departments devices={uniqueDevices} darkMode={darkMode} />
+                  <Departments
+                    devices={uniqueDevices.filter(d => {
+                      const dType = (d.system_type || d.device_type || '').toLowerCase();
+                      return dType === 'laptop' || dType === 'desktop';
+                    })}
+                    darkMode={darkMode}
+                  />
                 ) : (
                   <div style={{
                     backgroundColor: darkMode ? '#1e1e1e' : 'white',
@@ -526,7 +596,7 @@ function App() {
                           >Clear</button>
                         )}
                         <span style={{ fontSize: '0.8rem', color: darkMode ? '#666' : '#aaa', marginLeft: 'auto' }}>
-                          {filteredDevices.length} device{filteredDevices.length !== 1 ? 's' : ''}
+                          {sortedAndFilteredDevices.length} device{sortedAndFilteredDevices.length !== 1 ? 's' : ''}
                         </span>
                       </div>
                     )}
@@ -538,17 +608,17 @@ function App() {
                       display: 'flex', gap: '2rem',
                       color: darkMode ? '#bbb' : '#666', fontSize: '0.9rem'
                     }}>
-                      <div><span style={{ fontWeight: 'bold', color: darkMode ? '#fff' : '#333' }}>Total:</span> {filteredDevices.length}</div>
+                      <div><span style={{ fontWeight: 'bold', color: darkMode ? '#fff' : '#333' }}>Total:</span> {sortedAndFilteredDevices.length}</div>
                       <div>
                         <span style={{ fontWeight: 'bold', color: '#4CAF50' }}>Online:</span>{' '}
-                        {filteredDevices.filter(d => {
+                        {sortedAndFilteredDevices.filter(d => {
                           const dateStr = d.last_seen.endsWith('Z') ? d.last_seen : d.last_seen + 'Z'
                           return (new Date() - new Date(dateStr)) < 600000  // 10 min threshold
                         }).length}
                       </div>
                       <div>
                         <span style={{ fontWeight: 'bold', color: '#BDBDBD' }}>Offline:</span>{' '}
-                        {filteredDevices.filter(d => {
+                        {sortedAndFilteredDevices.filter(d => {
                           const dateStr = d.last_seen.endsWith('Z') ? d.last_seen : d.last_seen + 'Z'
                           return (new Date() - new Date(dateStr)) >= 600000
                         }).length}
@@ -559,13 +629,43 @@ function App() {
                       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead style={{ backgroundColor: darkMode ? '#2c2c2c' : '#f5f5f5', borderBottom: `2px solid ${darkMode ? '#444' : '#e0e0e0'}` }}>
                           <tr>
-                            {['Hostname', 'Owner', 'Department', 'IP / OS / MAC', 'Hardware', 'Status', 'Condition', 'Asset Status', 'Last Seen', 'Actions'].map(h => (
-                              <th key={h} style={{ padding: '1rem', color: darkMode ? '#aaa' : '#616161', fontSize: '0.85rem', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+                            {[
+                              { key: 'hostname', label: 'Hostname' },
+                              { key: 'current_user', label: 'Owner' },
+                              { key: 'department', label: 'Department' },
+                              { key: 'ip_os_mac', label: 'IP / OS / MAC' },
+                              { key: 'hardware', label: 'Hardware' },
+                              { key: 'status', label: 'Status' },
+                              { key: 'condition', label: 'Condition' },
+                              { key: 'asset_status', label: 'Asset Status' },
+                              { key: 'last_seen', label: 'Last Seen' },
+                              { key: 'actions', label: 'Actions' }
+                            ].map(col => (
+                              <th
+                                key={col.key}
+                                onClick={() => col.key !== 'actions' ? requestSort(col.key) : null}
+                                style={{
+                                  padding: '1rem',
+                                  color: darkMode ? '#aaa' : '#616161',
+                                  fontSize: '0.85rem',
+                                  textTransform: 'uppercase',
+                                  whiteSpace: 'nowrap',
+                                  cursor: col.key !== 'actions' ? 'pointer' : 'default',
+                                  userSelect: 'none'
+                                }}
+                              >
+                                {col.label}
+                                {sortConfig.key === col.key && (
+                                  <span style={{ marginLeft: '4px' }}>
+                                    {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                  </span>
+                                )}
+                              </th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredDevices.map((device) => {
+                          {sortedAndFilteredDevices.map((device) => {
                             const dateStr = device.last_seen.endsWith('Z') ? device.last_seen : device.last_seen + 'Z'
                             const lastSeenDate = new Date(dateStr)
                             const diffMs = new Date() - lastSeenDate
@@ -695,9 +795,9 @@ function App() {
                               </tr>
                             )
                           })}
-                          {filteredDevices.length === 0 && (
+                          {sortedAndFilteredDevices.length === 0 && (
                             <tr>
-                              <td colSpan="9" style={{ padding: '2rem', textAlign: 'center', color: darkMode ? '#888' : '#9e9e9e' }}>
+                              <td colSpan="10" style={{ padding: '2rem', textAlign: 'center', color: darkMode ? '#888' : '#9e9e9e' }}>
                                 No devices found for this category.
                               </td>
                             </tr>
