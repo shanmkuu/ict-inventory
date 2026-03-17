@@ -17,11 +17,21 @@ A lightweight system to track hardware inventory across your network. It feature
 ### 1. Server Installation (The Central Machine)
 This machine will host the database and the dashboard.
 
-1.  **Prerequisites**: Ensure Python 3.8+ is installed on the server.
+1.  **Prerequisites**:
+    - **Python 3.8+** (Add to PATH during installation).
+    - **Nmap** (Required for network discovery; ensure it's in your system PATH).
+    - **Node.js & npm** (Required to build/run the frontend dashboard).
+    - **Microsoft C++ Build Tools** (Optional but recommended if `pip install` fails on Windows).
 2.  **Install Dependencies**:
-    ```bash
-    py -m pip install -r backend/requirements.txt
-    ```
+    - **Backend**:
+      ```bash
+      py -m pip install -r backend/requirements.txt
+      ```
+    - **Frontend**:
+      ```bash
+      cd frontend
+      npm install
+      ```
 3.  **Start Automtically**:
     - Navigate to the `backend` folder.
     - Right-click `install_server_service.bat` and **Run as Administrator**.
@@ -70,29 +80,51 @@ If you want to modify the code:
     py build_agent.py
     ```
 
-## Server Migration / IP Change
+## 🚀 Server Migration / IP Change
 
-If the server's IP address changes (e.g. from `10.10.6.56` to `10.10.6.127`), follow these steps:
+If you are moving the system to a new server or changing its IP address, follow these steps:
 
-### 1. Update New Deployments
-Modify `deploy/config.json` on the server so future installations use the new IP.
+### 0. Find Your New Server Address
+Before you start, note the address of your new server. You can use either the **Hostname** or the **IP Address**.
+-   **CMD/PowerShell**: Run `hostname` for the name or `ipconfig` for the IP.
+-   **Local DNS**: You can often use `COMPUTERNAME.local` for a more stable connection.(recommended)
 
-### 2. Update Existing Agents
+### 1. Server Prerequisites
+1.  **Install Required Software** on the new server:
+    -   **Python 3.8+**
+    -   **Nmap** (must be in system PATH)
+    -   **Node.js & npm**
+2.  **Install Dependencies**:
+    -   Navigate to `backend` and run: `pip install -r requirements.txt`
+    -   Navigate to `frontend` and run: `npm install`
+3.  **Firewall Rules**: Ensure ports **8000** (Backend API) and **5173** (Frontend UI) are allowed through the firewall.
+
+### 2. Move the Database
+The system uses a SQLite database stored in the project root.
+-   **File**: `inventory.db`
+-   **Action**: Copy this file from the old server to the root folder of the new server to preserve your inventory records.
+
+### 2. Update New Deployments
+Modify the configuration templates so that all future agents use the correct IP.
+-   **Files**: `deploy/config.json` and root `config.json`.
+-   **Action**: Update the `api_url` or `api_urls` list with the new server's address.
+
+### 3. Update Existing Agents
 On each client machine:
-1. Open `config.json` in the agent installation folder.
-2. Update `"api_url"` with the new IP address.
-3. Restart the machine (or kill/restart `agent.exe`).
+1.  Navigate to the agent installation folder.
+2.  Open `config.json` and update the `api_url` to the new server address.
+3.  Restart the machine (or kill/restart `agent.exe`).
 
-### 3. Update Frontend Display
+### 4. Update Frontend Display
 To update the "Server Address" shown in the Dashboard Settings:
-1. Edit `frontend/src/components/Settings.jsx`.
-2. Locate the server IP and update it.
-3. Rebuild the frontend:
-   ```bash
-   cd frontend
-   npm run build
-   ```
-4. Restart the backend server.
+1.  Edit `frontend/src/components/Settings.jsx` (line 68) and update the server address.
+2.  If the backend and frontend are on different machines, update `target` in `frontend/vite.config.js`.
+3.  Rebuild the frontend:
+    ```bash
+    cd frontend
+    npm run build
+    ```
+4.  Restart the backend server.
 
 ## 🚀 Easy Startup
 

@@ -158,34 +158,40 @@ class DiscoveryService:
         """
         print(f"Starting scan on {subnet}")
         
-        # 1. Ping Scan (using nmap for speed if available, else socket connect)
-        # Nmap is best for discovery
-        live_hosts = await self._nmap_ping_scan(subnet)
+        # 1. Ping Scan — returns {ip: mac_or_None}
+        host_map = await self._nmap_ping_scan(subnet)
         
-        results = []
-        for host in live_hosts:
-            try:
-                device_info = await self._analyze_host(host, communities)
-                results.append(device_info)
-            except Exception as e:
-                print(f"Error analyzing host {host}: {e}")
+        sem = asyncio.Semaphore(15)  # Limit concurrency for analysis
+        async def bounded_analyze(ip, mac_hint):
+            async with sem:
+                try:
+                    return await self._analyze_host(ip, communities, mac_hint=mac_hint)
+                except Exception as e:
+                    print(f"Error analyzing host {ip}: {e}")
+                    return None
+                    
+        tasks = [bounded_analyze(ip, mac) for ip, mac in host_map.items()]
+        analyzed_results = await asyncio.gather(*tasks)
+        
+        results = [r for r in analyzed_results if r]
             
         print(f"Scan complete. Found {len(results)} devices.")
         return results
 
     async def _nmap_ping_scan(self, subnet):
+        """Returns a dict of {ip: mac_address_or_None} for live hosts."""
         loop = asyncio.get_event_loop()
         try:
-            # Check if nmap is available
             if self.nm:
-                # -sn: Ping Scan - disable port scan
-                # -PE: ICMP Echo
+                # -sn: Ping Scan, -PE: ICMP Echo
                 return await loop.run_in_executor(None, self._run_nmap, subnet, "-sn -PE")
             else:
-                return await self._fallback_ping_scan(subnet)
+                hosts = await self._fallback_ping_scan(subnet)
+                return {ip: None for ip in hosts}
         except Exception as e:
             print(f"Nmap scan failed: {e}")
-            return await self._fallback_ping_scan(subnet)
+            hosts = await self._fallback_ping_scan(subnet)
+            return {ip: None for ip in hosts}
 
     async def _fallback_ping_scan(self, subnet):
         print(f"Running fallback ping scan on {subnet}")
@@ -201,17 +207,13 @@ class DiscoveryService:
                 print(f"Subnet too large for fallback scan ({len(hosts)} hosts). Limiting to first 1024.")
                 hosts = hosts[:1024]
 
-            # Use system ping
-            # Windows: ping -n 1 -w 500 <ip>
-            # Linux: ping -c 1 -W 1 <ip>
-            
             param = '-n' if platform.system().lower() == 'windows' else '-c'
             wait_param = '-w' if platform.system().lower() == 'windows' else '-W'
-            wait_val = '500' if platform.system().lower() == 'windows' else '1' # ms in windows, s in linux
+            wait_val = '500' if platform.system().lower() == 'windows' else '1'
             
             live_hosts = []
             
-            sem = asyncio.Semaphore(50) # Limit concurrency
+            sem = asyncio.Semaphore(50)  # Limit concurrency
 
             async def ping_host(ip):
                 async with sem:
@@ -243,17 +245,30 @@ class DiscoveryService:
             return []
 
     def _run_nmap(self, subnet, args):
+        """Runs nmap and returns a dict {ip: mac_address_or_None}."""
         if not self.nm:
-            return []
+            return {}
         try:
             self.nm.scan(hosts=subnet, arguments=args)
-            return self.nm.all_hosts()
+            host_map = {}
+            for host in self.nm.all_hosts():
+                mac = None
+                try:
+                    # Nmap stores MAC under the 'mac' key in the 'addresses' dict
+                    mac_raw = self.nm[host].get('addresses', {}).get('mac', None)
+                    if mac_raw:
+                        mac = mac_raw.upper()
+                except Exception:
+                    pass
+                host_map[host] = mac
+            print(f"[Nmap] Found {len(host_map)} hosts, {sum(1 for m in host_map.values() if m)} with MACs.")
+            return host_map
         except nmap.PortScannerError:
-            return []
+            return {}
         except Exception:
-            return []
+            return {}
 
-    async def _analyze_host(self, ip, communities):
+    async def _analyze_host(self, ip, communities, mac_hint=None):
         info = {
             "ip_address": ip,
             "status": "online",
@@ -264,9 +279,15 @@ class DiscoveryService:
             "hostname": None
         }
         
-        # 1. ARP Lookup (Get MAC) - Essential for Vendor ID
-        # Since we just pinged, ARP table should be fresh.
-        info["mac_address"] = await self._get_mac_from_arp(ip)
+        # 1. Use MAC from Nmap scan if available, otherwise try ARP lookup
+        if mac_hint:
+            info["mac_address"] = mac_hint
+            print(f"[MAC] {ip} -> {mac_hint} (from Nmap)")
+        else:
+            info["mac_address"] = await self._get_mac_from_arp(ip)
+            if info["mac_address"]:
+                print(f"[MAC] {ip} -> {info['mac_address']} (from ARP)")
+        
         if info["mac_address"]:
             info["vendor"] = self._get_vendor(info["mac_address"])
 
@@ -387,11 +408,9 @@ class DiscoveryService:
         return info
 
     async def _check_ports(self, ip, ports):
-        open_ports = []
-        for port in ports:
-            if await self._is_port_open(ip, port):
-                open_ports.append(port)
-        return open_ports
+        tasks = [self._is_port_open(ip, port) for port in ports]
+        results = await asyncio.gather(*tasks)
+        return [port for port, is_open in zip(ports, results) if is_open]
 
     async def _is_port_open(self, ip, port, timeout=1.5):
         try:

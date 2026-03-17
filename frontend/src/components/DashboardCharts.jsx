@@ -230,14 +230,26 @@ const DashboardCharts = ({ devices, networkDevices = [], darkMode }) => {
                 <h2 style={{ margin: '0 0 2rem 0', color: darkMode ? '#fff' : '#1e293b', fontSize: '1.35rem', fontWeight: 600 }}>Asset Inventory</h2>
 
                 <div style={{ display: 'flex', gap: '2rem', marginBottom: '2rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 2rem', borderRight: darkMode ? '1px solid #1f232b' : '1px solid #e2e8f0' }}>
-                        <div style={{ fontSize: '3.5rem', fontWeight: 800, color: darkMode ? '#fff' : '#1e293b', fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>
-                            {totalDevices}
-                        </div>
-                        <div style={{ fontSize: '1.1rem', color: darkMode ? '#a0aabf' : '#64748b', fontWeight: 600, marginTop: '0.5rem' }}>Total Assets</div>
-                    </div>
-
                     <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+                        {/* Total Assets compact card */}
+                        <div style={{
+                            backgroundColor: darkMode ? '#1c1f26' : '#ffffff',
+                            padding: '1rem',
+                            borderRadius: '8px',
+                            border: `1px solid #6366f1`,
+                            boxShadow: `0 0 16px #6366f130`,
+                            display: 'flex', flexDirection: 'column',
+                            justifyContent: 'center',
+                            transition: 'all 0.3s ease'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                <div style={{ width: '8px', height: '8px', backgroundColor: '#6366f1', borderRadius: '2px', boxShadow: '0 0 8px #6366f1' }} />
+                                <span style={{ fontSize: '0.65rem', color: darkMode ? '#a0aabf' : '#64748b', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Total Assets</span>
+                            </div>
+                            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: darkMode ? '#e2e8f0' : '#1e293b', fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.2 }}>
+                                {totalDevices}
+                            </div>
+                        </div>
                         <MiniStatCard label="System Units" value={deviceCounts.desktop} color="#8b5cf6" darkMode={darkMode} />
                         <MiniStatCard label="Laptops" value={deviceCounts.laptop} color="#ec4899" darkMode={darkMode} />
                         <MiniStatCard label="MacBooks" value={deviceCounts.mac} color="#94a3b8" darkMode={darkMode} />
@@ -259,7 +271,7 @@ const DashboardCharts = ({ devices, networkDevices = [], darkMode }) => {
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                                 <div style={{ width: '8px', height: '8px', backgroundColor: '#f59e0b', borderRadius: '2px', boxShadow: `0 0 8px #f59e0b` }} />
-                                <span style={{ fontSize: '0.65rem', color: darkMode ? '#a0aabf' : '#64748b', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Conditions</span>
+                                <span style={{ fontSize: '0.65rem', color: darkMode ? '#a0aabf' : '#64748b', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Computer Conditions</span>
                             </div>
                             <div style={{
                                 display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px'

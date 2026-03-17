@@ -146,6 +146,7 @@ const NetworkDevices = ({ darkMode }) => {
     const [selectedDevice, setSelectedDevice] = useState(null);
     const [scanning, setScanning] = useState(false);
     const [scanStatus, setScanStatus] = useState(null);
+    const [filterType, setFilterType] = useState('all');
 
     const fetchDevices = useCallback(async () => {
         try {
@@ -268,6 +269,40 @@ const NetworkDevices = ({ darkMode }) => {
                 scanning={scanning}
             />
 
+            {/* Type Filter Bar */}
+            {(() => {
+                const allTypes = ['all', ...Array.from(new Set(devices.map(d => d.device_type || 'unknown'))).sort()];
+                const textMuted = darkMode ? '#8899aa' : '#6b7280';
+                return (
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.8rem', color: textMuted, fontWeight: 600 }}>Filter:</span>
+                        {allTypes.map(type => {
+                            const active = filterType === type;
+                            return (
+                                <button
+                                    key={type}
+                                    onClick={() => setFilterType(type)}
+                                    style={{
+                                        padding: '4px 12px',
+                                        borderRadius: '9999px',
+                                        border: `1px solid ${active ? '#22c55e' : (darkMode ? '#444' : '#d1d5db')}`,
+                                        backgroundColor: active ? '#22c55e' : 'transparent',
+                                        color: active ? 'white' : (darkMode ? '#ccc' : '#374151'),
+                                        fontSize: '0.78rem',
+                                        fontWeight: active ? 700 : 400,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s',
+                                        textTransform: 'capitalize',
+                                    }}
+                                >
+                                    {type === 'all' ? 'All' : type.replace(/_/g, ' ')}
+                                </button>
+                            );
+                        })}
+                    </div>
+                );
+            })()}
+
             {/* Error */}
             {error && (
                 <div style={{
@@ -302,8 +337,13 @@ const NetworkDevices = ({ darkMode }) => {
                         </thead>
                         <tbody>
                             {(() => {
+                                // 0. Apply type filter
+                                const filteredDevices = filterType === 'all'
+                                    ? devices
+                                    : devices.filter(d => (d.device_type || 'unknown') === filterType);
+
                                 // 1. Determine online status for each device
-                                const processedDevices = devices.map(device => {
+                                const processedDevices = filteredDevices.map(device => {
                                     const isOnline = device.system_status
                                         ? device.system_status === 'online'
                                         : (() => {
