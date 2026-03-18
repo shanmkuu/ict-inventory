@@ -525,7 +525,10 @@ function App() {
                 const device = deleteTarget
                 setDeleteTarget(null)
                 try {
-                  const res = await fetch(`/api/v1/devices/${device.device_id}?admin=admin`, { method: 'DELETE' })
+                  const res = await fetch(`/api/v1/devices/${device.device_id}?admin=admin`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                  })
                   if (res.ok || res.status === 204) {
                     fetchDevices()
                   } else {
