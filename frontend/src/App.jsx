@@ -77,6 +77,8 @@ function App() {
   // All Devices filters
   const [deptFilter, setDeptFilter] = useState('All')
   const [conditionFilter, setConditionFilter] = useState('All')
+  const [osFilter, setOsFilter] = useState('All')
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Sorting
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
@@ -153,11 +155,30 @@ function App() {
       if (activeTab === 'all') {
         const matchesDept = deptFilter === 'All' || (device.department || '') === deptFilter;
         const matchesCondition = conditionFilter === 'All' || (device.condition || 'Functioning') === conditionFilter;
+        const matchesOS = osFilter === 'All' || (device.os_name || '') === osFilter;
+
+        const q = searchQuery.toLowerCase();
+        const matchesSearch = !q || [
+          device.hostname,
+          device.current_user,
+          device.department,
+          device.ip_address,
+          device.os_name,
+          device.mac_address,
+          device.system_type,
+          device.device_type,
+          device.condition,
+          device.asset_status,
+          device.serial_number,
+          device.gpu_model,
+          device.ram_total_gb ? String(device.ram_total_gb) : '',
+          device.disk_total_gb ? String(device.disk_total_gb) : ''
+        ].some(val => val && String(val).toLowerCase().includes(q));
 
         const dType = (device.system_type || device.device_type || '').toLowerCase();
         const isLaptopOrDesktop = dType === 'laptop' || dType === 'desktop';
 
-        return matchesDept && matchesCondition && isLaptopOrDesktop;
+        return matchesDept && matchesCondition && matchesOS && matchesSearch && isLaptopOrDesktop;
       }
       if (activeTab === 'desktop') return device.system_type === 'Desktop'
       if (activeTab === 'laptop') return device.system_type === 'Laptop'
@@ -272,6 +293,13 @@ function App() {
     const depts = new Set()
     uniqueDevices.forEach(d => { if (d.department) depts.add(d.department) })
     return ['All', ...Array.from(depts).sort()]
+  }, [uniqueDevices])
+
+  // Unique OS types for filter dropdown (All Devices tab)
+  const uniqueOS = useMemo(() => {
+    const osSet = new Set()
+    uniqueDevices.forEach(d => { if (d.os_name) osSet.add(d.os_name) })
+    return ['All', ...Array.from(osSet).sort()]
   }, [uniqueDevices])
 
   const getPageTitle = () => {
@@ -663,9 +691,39 @@ function App() {
                           <option value="Faulty">Faulty</option>
                           <option value="Decommissioned">Decommissioned</option>
                         </select>
-                        {(deptFilter !== 'All' || conditionFilter !== 'All') && (
+                        <span style={{ fontSize: '0.85rem', color: darkMode ? '#aaa' : '#666', fontWeight: 'bold', marginLeft: '0.5rem' }}>OS:</span>
+                        <select
+                          value={osFilter}
+                          onChange={e => setOsFilter(e.target.value)}
+                          style={{
+                            padding: '5px 10px', borderRadius: '6px',
+                            border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                            backgroundColor: darkMode ? '#2c2c2c' : '#fff',
+                            color: darkMode ? '#e0e0e0' : '#333',
+                            fontSize: '0.875rem', cursor: 'pointer', outline: 'none'
+                          }}
+                        >
+                          {uniqueOS.map(os => (
+                            <option key={os} value={os}>{os === 'All' ? 'All OS' : os}</option>
+                          ))}
+                        </select>
+                        <input
+                          type="text"
+                          placeholder="Super Search..."
+                          value={searchQuery}
+                          onChange={e => setSearchQuery(e.target.value)}
+                          style={{
+                            padding: '5px 10px', borderRadius: '6px',
+                            border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                            backgroundColor: darkMode ? '#1e1e1e' : '#fff',
+                            color: darkMode ? '#e0e0e0' : '#333',
+                            fontSize: '0.875rem', outline: 'none', marginLeft: '0.5rem',
+                            minWidth: '200px'
+                          }}
+                        />
+                        {(deptFilter !== 'All' || conditionFilter !== 'All' || osFilter !== 'All' || searchQuery !== '') && (
                           <button
-                            onClick={() => { setDeptFilter('All'); setConditionFilter('All'); }}
+                            onClick={() => { setDeptFilter('All'); setConditionFilter('All'); setOsFilter('All'); setSearchQuery(''); }}
                             style={{
                               padding: '4px 10px', borderRadius: '6px', border: 'none',
                               backgroundColor: darkMode ? '#333' : '#eee',
