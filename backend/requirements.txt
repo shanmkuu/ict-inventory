@@ -5,3 +5,7 @@ pydantic
 pysnmp
 python-nmap
 aiofiles
+PyJWT
+passlib
+bcrypt<4.0.0
+python-multipart

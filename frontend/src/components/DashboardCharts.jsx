@@ -118,7 +118,7 @@ const DashboardCharts = ({ devices, networkDevices: rawNetworkDevices = [], dark
 
     const computerOnlineCount = useMemo(() =>
         devices.filter(d => {
-            const ds = d.last_seen.endsWith('Z') ? d.last_seen : d.last_seen + 'Z'
+            const ds = d.last_seen.endsWith('Z') || d.last_seen.includes('+') ? d.last_seen : d.last_seen + 'Z'
             // Computers: 10-min grace
             return (now - new Date(ds)) < 600000
         }).length, [devices])
@@ -128,14 +128,14 @@ const DashboardCharts = ({ devices, networkDevices: rawNetworkDevices = [], dark
             // NetDevs: Primary: use system_status
             if (d.system_status) return d.system_status === 'online'
             // Fallback: 15-min grace
-            const ds = d.last_seen.endsWith('Z') ? d.last_seen : d.last_seen + 'Z'
+            const ds = d.last_seen.endsWith('Z') || d.last_seen.includes('+') ? d.last_seen : d.last_seen + 'Z'
             return (now - new Date(ds)) < 900000
         }).length, [networkDevices])
 
     const onlineDeviceCounts = useMemo(() => {
         const counts = { desktop: 0, laptop: 0, mac: 0, printer: 0, switch: 0, router: 0, tv: 0 }
         devices.forEach(d => {
-            const ds = d.last_seen.endsWith('Z') ? d.last_seen : d.last_seen + 'Z'
+            const ds = d.last_seen.endsWith('Z') || d.last_seen.includes('+') ? d.last_seen : d.last_seen + 'Z'
             if ((now - new Date(ds)) < 600000) {
                 const sysType = (d.system_type || '').toLowerCase()
                 const os = (d.os_type || d.os_name || '').toLowerCase()
@@ -149,7 +149,7 @@ const DashboardCharts = ({ devices, networkDevices: rawNetworkDevices = [], dark
             let isOnline = false
             if (d.system_status) isOnline = d.system_status === 'online'
             else {
-                const ds = d.last_seen.endsWith('Z') ? d.last_seen : d.last_seen + 'Z'
+                const ds = d.last_seen.endsWith('Z') || d.last_seen.includes('+') ? d.last_seen : d.last_seen + 'Z'
                 isOnline = (now - new Date(ds)) < 900000
             }
             if (isOnline) {

@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useContext } from 'react'
 import { X, Building2 } from 'lucide-react'
+import { AuthContext } from '../context/AuthContext'
 
 const DEPARTMENTS = [
     'Radio Services',
@@ -19,9 +20,9 @@ const DEPARTMENTS = [
 ]
 
 const SetDepartmentModal = ({ device, darkMode, onClose, onSuccess }) => {
+    const { token } = useContext(AuthContext)
     const [department, setDepartment] = useState(device.department || '')
     const [condition, setCondition] = useState(device.condition || 'Functioning')
-    const [adminUser, setAdminUser] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
 
@@ -37,18 +38,17 @@ const SetDepartmentModal = ({ device, darkMode, onClose, onSuccess }) => {
             setError('Please select a department.')
             return
         }
-        if (!adminUser.trim()) {
-            setError('Admin name is required for audit purposes.')
-            return
-        }
         setLoading(true)
         setError(null)
         try {
             const res = await fetch(
-                `/api/v1/devices/${device.device_id}?admin=${encodeURIComponent(adminUser.trim())}`,
+                `/api/v1/devices/${device.device_id}`,
                 {
                     method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: JSON.stringify({ department, condition }),
                 }
             )
@@ -158,22 +158,7 @@ const SetDepartmentModal = ({ device, darkMode, onClose, onSuccess }) => {
                         </select>
                     </div>
 
-                    {/* Admin Name */}
-                    <div style={{ marginBottom: '1.5rem' }}>
-                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: labelColor }}>
-                            Admin / Your Name <span style={{ color: '#E53935' }}>*</span>
-                        </label>
-                        <input
-                            value={adminUser}
-                            onChange={e => setAdminUser(e.target.value)}
-                            placeholder="Your name for the audit log"
-                            style={{
-                                width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px',
-                                border: `1px solid ${border}`, backgroundColor: inputBg,
-                                color: text, fontSize: '0.95rem', boxSizing: 'border-box', outline: 'none'
-                            }}
-                        />
-                    </div>
+
 
                     {error && (
                         <div style={{

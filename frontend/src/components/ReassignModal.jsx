@@ -1,17 +1,18 @@
-import React, { useState } from 'react'
+import React, { useState, useContext } from 'react'
 import { X, UserCheck } from 'lucide-react'
+import { AuthContext } from '../context/AuthContext'
 
 const ReassignModal = ({ device, darkMode, onClose, onSuccess }) => {
+    const { token } = useContext(AuthContext)
     const [newUser, setNewUser] = useState('')
-    const [adminUser, setAdminUser] = useState('')
     const [reason, setReason] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        if (!newUser.trim() || !adminUser.trim()) {
-            setError('New Owner and Admin fields are required.')
+        if (!newUser.trim()) {
+            setError('New Owner field is required.')
             return
         }
         setLoading(true)
@@ -19,8 +20,11 @@ const ReassignModal = ({ device, darkMode, onClose, onSuccess }) => {
         try {
             const res = await fetch(`/api/v1/devices/${device.device_id}/reassign`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ new_user: newUser.trim(), admin_user: adminUser.trim(), reason: reason.trim() || null }),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ new_user: newUser.trim(), reason: reason.trim() || null }),
             })
             if (!res.ok) {
                 const data = await res.json()
@@ -108,22 +112,7 @@ const ReassignModal = ({ device, darkMode, onClose, onSuccess }) => {
                         />
                     </div>
 
-                    {/* Admin */}
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', color: labelColor }}>
-                            Admin Performing Reassignment <span style={{ color: '#E53935' }}>*</span>
-                        </label>
-                        <input
-                            value={adminUser}
-                            onChange={e => setAdminUser(e.target.value)}
-                            placeholder="Your name / admin username"
-                            style={{
-                                width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px',
-                                border: `1px solid ${border}`, backgroundColor: inputBg,
-                                color: text, fontSize: '0.95rem', boxSizing: 'border-box'
-                            }}
-                        />
-                    </div>
+
 
                     {/* Reason */}
                     <div style={{ marginBottom: '1.5rem' }}>

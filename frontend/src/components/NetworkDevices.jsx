@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import { RefreshCw, Wifi, WifiOff, Activity, Clock, Radio, Trash2 } from 'lucide-react';
+import { AuthContext } from '../context/AuthContext';
 
 // ── Status Bar ────────────────────────────────────────────────────────────────
 
@@ -140,6 +141,7 @@ const TypeBadge = ({ type, darkMode }) => {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 const NetworkDevices = ({ darkMode }) => {
+    const { token } = useContext(AuthContext);
     const [devices, setDevices] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -150,7 +152,9 @@ const NetworkDevices = ({ darkMode }) => {
 
     const fetchDevices = useCallback(async () => {
         try {
-            const res = await fetch('/api/v1/network/devices');
+            const res = await fetch('/api/v1/network/devices', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (!res.ok) throw new Error('Failed to fetch network devices');
             const data = await res.json();
             setDevices(data);
@@ -164,7 +168,9 @@ const NetworkDevices = ({ darkMode }) => {
 
     const fetchScanStatus = useCallback(async () => {
         try {
-            const res = await fetch('/api/v1/network/scan-status');
+            const res = await fetch('/api/v1/network/scan-status', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (res.ok) {
                 const data = await res.json();
                 setScanStatus(data);
@@ -194,7 +200,10 @@ const NetworkDevices = ({ darkMode }) => {
     const handleScanNow = async () => {
         setScanning(true);
         try {
-            const res = await fetch('/api/v1/network/scan', { method: 'POST' });
+            const res = await fetch('/api/v1/network/scan', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (!res.ok) {
                 const body = await res.json().catch(() => ({}));
                 throw new Error(body.detail || 'Failed to start scan');
@@ -213,7 +222,10 @@ const NetworkDevices = ({ darkMode }) => {
         }
 
         try {
-            const res = await fetch(`/api/v1/network/devices/${deviceId}`, { method: 'DELETE' });
+            const res = await fetch(`/api/v1/network/devices/${deviceId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (!res.ok) {
                 const body = await res.json().catch(() => ({}));
                 throw new Error(body.detail || 'Failed to delete device');
@@ -222,6 +234,54 @@ const NetworkDevices = ({ darkMode }) => {
         } catch (err) {
             setError(`Delete failed: ${err.message}`);
         }
+    };
+
+    const exportToCSV = () => {
+        const filteredDevices = filterType === 'all'
+            ? devices
+            : devices.filter(d => (d.device_type || 'unknown') === filterType);
+
+        if (filteredDevices.length === 0) {
+            alert('No network devices to export.');
+            return;
+        }
+
+        const headers = ['IP Address', 'Hostname', 'Device Type', 'MAC Address', 'Status', 'Open Ports', 'Last Seen'];
+
+        const rows = filteredDevices.map(d => {
+            const isOnline = d.system_status ? d.system_status === 'online' : (() => {
+                const ms = d.last_seen ? new Date(d.last_seen.endsWith('Z') ? d.last_seen : d.last_seen + 'Z').getTime() : 0;
+                return ms > 0 && (Date.now() - ms) < 900000;
+            })();
+
+            const dateStr = d.last_seen ? (d.last_seen.endsWith('Z') ? d.last_seen : d.last_seen + 'Z') : '';
+            const lastSeenFormatted = dateStr ? new Date(dateStr).toLocaleString() : 'Never';
+
+            const openPorts = d.open_ports_detected || '';
+
+            return [
+                `"${d.ip_address || ''}"`,
+                `"${d.hostname || ''}"`,
+                `"${d.device_type || 'unknown'}"`,
+                `"${d.mac_address || ''}"`,
+                `"${isOnline ? 'Online' : 'Offline'}"`,
+                `"${openPorts}"`,
+                `"${lastSeenFormatted}"`
+            ].join(',');
+        });
+
+        const csvContent = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const today = new Date().toISOString().slice(0, 10);
+        link.download = `network_devices_export_${today}.csv`;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     };
 
     if (selectedDevice) {
@@ -245,20 +305,39 @@ const NetworkDevices = ({ darkMode }) => {
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                 <h2 style={{ fontSize: '1.5rem', margin: 0 }}>Network Devices</h2>
-                <button
-                    onClick={fetchDevices}
-                    title="Refresh device list"
-                    style={{
-                        padding: '6px 10px',
-                        backgroundColor: darkMode ? '#333' : '#eee',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        color: darkMode ? '#fff' : '#333',
-                    }}
-                >
-                    <RefreshCw size={15} />
-                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                        onClick={exportToCSV}
+                        title="Export filtered network devices to a CSV file"
+                        style={{
+                            padding: '6px 12px',
+                            backgroundColor: darkMode ? '#2c3e2e' : '#E8F5E9',
+                            color: '#4CAF50',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem',
+                            fontWeight: 'bold',
+                            display: 'flex', alignItems: 'center', gap: '6px'
+                        }}
+                    >
+                        ⬇ Export CSV
+                    </button>
+                    <button
+                        onClick={fetchDevices}
+                        title="Refresh device list"
+                        style={{
+                            padding: '6px 10px',
+                            backgroundColor: darkMode ? '#333' : '#eee',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            color: darkMode ? '#fff' : '#333',
+                        }}
+                    >
+                        <RefreshCw size={15} />
+                    </button>
+                </div>
             </div>
 
             {/* Status bar with Scan Now button */}

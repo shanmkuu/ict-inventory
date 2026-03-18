@@ -1,8 +1,11 @@
-import React from 'react'
+import React, { useContext } from 'react'
+import { AuthContext } from '../context/AuthContext'
 import logo from '../assets/icon_logo.png'
-import { LayoutDashboard, Monitor, Laptop, Server, Settings, Network, ClipboardList, Building2, PlusCircle } from 'lucide-react'
+import { LayoutDashboard, Monitor, Laptop, Server, Settings, Network, ClipboardList, Building2, PlusCircle, Users, LogOut } from 'lucide-react'
 
 const Sidebar = ({ activeTab, onTabChange, darkMode }) => {
+    const { user, logout } = useContext(AuthContext);
+    const isAdmin = user?.role === 'Admin';
     const menuItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'all', label: 'All Devices', icon: Server },
@@ -10,10 +13,11 @@ const Sidebar = ({ activeTab, onTabChange, darkMode }) => {
         { id: 'desktop', label: 'System Units', icon: Monitor },
         { id: 'laptop', label: 'Laptops', icon: Laptop },
         { id: 'network-devices', label: 'Network Devices', icon: Network },
-        { id: 'manual-entry', label: 'Add Device', icon: PlusCircle },
+        isAdmin ? { id: 'manual-entry', label: 'Add Device', icon: PlusCircle } : null,
         { id: 'records', label: 'Records', icon: ClipboardList },
-        { id: 'settings', label: 'Settings', icon: Settings },
-    ]
+        isAdmin ? { id: 'users', label: 'Manage Users', icon: Users } : null,
+        isAdmin ? { id: 'settings', label: 'Settings', icon: Settings } : null,
+    ].filter(Boolean)
 
     return (
         <div className="sidebar" style={{
@@ -95,6 +99,29 @@ const Sidebar = ({ activeTab, onTabChange, darkMode }) => {
                         </div>
                     )
                 })}
+            </div>
+
+            {/* Logout Button */}
+            <div style={{ padding: '1rem', borderTop: `1px solid ${darkMode ? '#333' : '#e0e0e0'}` }}>
+                <div
+                    onClick={logout}
+                    style={{
+                        padding: '0.75rem 1.5rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        cursor: 'pointer',
+                        color: '#F44336',
+                        borderRadius: '6px',
+                        transition: 'all 0.2s ease',
+                        fontWeight: 'bold'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3a1a1a' : '#FFEBEE'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                    <LogOut size={20} />
+                    <span>Logout</span>
+                </div>
             </div>
         </div>
     )

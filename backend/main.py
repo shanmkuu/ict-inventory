@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
-from . import database, schemas
-from .routes import network_devices
+from . import database, schemas, auth
+from .routes import network_devices, auth as auth_router, users as users_router
 import os
 import csv
 import io
@@ -27,7 +27,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="ICT Inventory API", lifespan=lifespan)
 
 app.include_router(network_devices.router, prefix="/api/v1/network", tags=["Network Devices"])
-
+app.include_router(auth_router.router, prefix="/api/v1")
+app.include_router(users_router.router, prefix="/api/v1")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -46,6 +47,17 @@ def get_db():
 
 
 database.init_db()
+
+startup_db = database.SessionLocal()
+try:
+    admin_user = startup_db.query(database.User).filter(database.User.username == "admin").first()
+    if not admin_user:
+        hashed = auth.get_password_hash("admin")
+        new_admin = database.User(username="admin", hashed_password=hashed, role="Admin")
+        startup_db.add(new_admin)
+        startup_db.commit()
+finally:
+    startup_db.close()
 
 API_KEY = "YOUR_API_KEY_HERE"
 
@@ -140,9 +152,10 @@ def receive_heartbeat(
 @app.post("/api/v1/devices", response_model=schemas.Device)
 def create_manual_device(
     device_data: schemas.DeviceCreate,
-    admin: str = Query(default="admin", description="Admin performing the addition"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_admin = Depends(auth.get_current_admin_user)
 ):
+    admin = current_admin.username
     """Manually add a new device to the inventory."""
     # Ensure device_id is unique
     existing = db.query(database.Device).filter(database.Device.device_id == device_data.device_id).first()
@@ -184,13 +197,13 @@ def create_manual_device(
 
 
 @app.get("/api/v1/devices", response_model=List[schemas.Device])
-def list_devices(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def list_devices(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user=Depends(auth.get_current_user)):
     devices = db.query(database.Device).offset(skip).limit(limit).all()
     return [enrich_device_status(d) for d in devices]
 
 
 @app.get("/api/v1/devices/{device_id}", response_model=schemas.Device)
-def read_device(device_id: str, db: Session = Depends(get_db)):
+def read_device(device_id: str, db: Session = Depends(get_db), current_user=Depends(auth.get_current_user)):
     db_device = db.query(database.Device).filter(database.Device.device_id == device_id).first()
     if db_device is None:
         raise HTTPException(status_code=404, detail="Device not found")
@@ -201,9 +214,10 @@ def read_device(device_id: str, db: Session = Depends(get_db)):
 def update_device(
     device_id: str,
     patch: schemas.DevicePatch,
-    admin: str = Query(..., description="Admin performing the update"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_admin = Depends(auth.get_current_admin_user)
 ):
+    admin = current_admin.username
     """Update lifecycle fields (status, department, serial number, etc.)"""
     db_device = db.query(database.Device).filter(database.Device.device_id == device_id).first()
     if db_device is None:
@@ -246,9 +260,10 @@ def update_device(
 @app.delete("/api/v1/devices/{device_id}", status_code=204)
 def delete_device(
     device_id: str,
-    admin: str = Query(default="admin", description="Admin performing the deletion"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_admin = Depends(auth.get_current_admin_user)
 ):
+    admin = current_admin.username
     """Permanently remove a device entry (for duplicates / phantom devices)."""
     db_device = db.query(database.Device).filter(database.Device.device_id == device_id).first()
     if db_device is None:
@@ -281,8 +296,10 @@ def delete_device(
 def reassign_device(
     device_id: str,
     payload: schemas.ReassignRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_admin = Depends(auth.get_current_admin_user)
 ):
+    admin = current_admin.username
     db_device = db.query(database.Device).filter(database.Device.device_id == device_id).first()
     if db_device is None:
         raise HTTPException(status_code=404, detail="Device not found")
@@ -297,7 +314,7 @@ def reassign_device(
         previous_user=previous_user,
         new_user=payload.new_user,
         reassigned_at=datetime.now(timezone.utc),
-        admin_user=payload.admin_user,
+        admin_user=admin,
         department=db_device.department,
         reason=payload.reason,
         condition=db_device.condition,
@@ -310,7 +327,7 @@ def reassign_device(
 
     # Audit entry
     _write_audit(
-        db, "REASSIGN", db_device.device_id, db_device.hostname, payload.admin_user,
+        db, "REASSIGN", db_device.device_id, db_device.hostname, admin,
         f"Reassigned from '{previous_user}' to '{payload.new_user}'. Reason: {payload.reason or 'N/A'}"
     )
 
@@ -331,7 +348,8 @@ def list_records(
     date_to: Optional[str] = None,
     skip: int = 0,
     limit: int = 500,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(auth.get_current_user)
 ):
     q = db.query(database.AssignmentHistory)
     if device_id:
@@ -368,7 +386,8 @@ def export_records_csv(
     condition: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(auth.get_current_user)
 ):
     """Export assignment history as CSV."""
     records = list_records(
@@ -404,7 +423,8 @@ def list_audit(
     action: Optional[str] = None,
     skip: int = 0,
     limit: int = 500,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(auth.get_current_user)
 ):
     q = db.query(database.AuditLog)
     if device_id:

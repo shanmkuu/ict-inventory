@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useContext } from 'react'
 import { ClipboardList, Search, Download, Filter, X } from 'lucide-react'
+import { AuthContext } from '../context/AuthContext'
 
 const ASSET_STATUS_COLORS = {
     Assigned: '#4CAF50',
@@ -9,6 +10,7 @@ const ASSET_STATUS_COLORS = {
 }
 
 const Records = ({ darkMode }) => {
+    const { token } = useContext(AuthContext)
     const [records, setRecords] = useState([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
@@ -37,7 +39,9 @@ const Records = ({ darkMode }) => {
             if (filterCondition !== 'All') params.set('condition', filterCondition)
             if (filterDateFrom) params.set('date_from', filterDateFrom)
             if (filterDateTo) params.set('date_to', filterDateTo)
-            const res = await fetch(`/api/v1/records?${params.toString()}`)
+            const res = await fetch(`/api/v1/records?${params.toString()}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
             if (!res.ok) throw new Error('Failed to fetch records')
             const data = await res.json()
             setRecords(data)
@@ -50,7 +54,7 @@ const Records = ({ darkMode }) => {
 
     useEffect(() => { fetchRecords() }, [fetchRecords])
 
-    const handleExport = () => {
+    const handleExport = async () => {
         const params = new URLSearchParams()
         if (filterDevice) params.set('device_id', filterDevice)
         if (filterUser) params.set('user', filterUser)
@@ -58,7 +62,24 @@ const Records = ({ darkMode }) => {
         if (filterCondition !== 'All') params.set('condition', filterCondition)
         if (filterDateFrom) params.set('date_from', filterDateFrom)
         if (filterDateTo) params.set('date_to', filterDateTo)
-        window.open(`/api/v1/records/export?${params.toString()}`, '_blank')
+        try {
+            const res = await fetch(`/api/v1/records/export?${params.toString()}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            if (!res.ok) throw new Error('Failed to export records')
+            const blob = await res.blob()
+            const url = window.URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = 'assignment_history.csv'
+            document.body.appendChild(a)
+            a.click()
+            a.remove()
+            window.URL.revokeObjectURL(url)
+        } catch (e) {
+            console.error(e)
+            alert('Export failed')
+        }
     }
 
     const clearFilters = () => {

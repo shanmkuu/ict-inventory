@@ -53,7 +53,7 @@ This machine will host the database and the dashboard.
     * This registers the server to start automatically when the computer turns on.
 
 > [!TIP]
-> **Manual Start**: Alternatively, run `py -m uvicorn main:app --host 0.0.0.0 --port 8000` inside the backend folder.
+> **Manual Start**: Alternatively, run `uvicorn backend.main:app --reload --port 8000` inside the backend folder.
 
 4.  **Access Dashboard**: Open `http://blackhat-x.local:8000` (or `http://YOUR_SERVER_IP:8000`).
 

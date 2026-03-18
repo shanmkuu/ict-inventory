@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Save, Monitor, Network, Tag, Cpu, Info } from 'lucide-react';
+import { AuthContext } from '../context/AuthContext';
 
 const ManualEntry = ({ darkMode, onSuccess }) => {
+    const { token } = useContext(AuthContext);
     const [formData, setFormData] = useState({
         hostname: '',
         os_name: '',
@@ -54,9 +56,12 @@ const ManualEntry = ({ darkMode, onSuccess }) => {
                 ip_address: formData.ip_address.trim() || null,
             };
 
-            const res = await fetch('/api/v1/devices?admin=admin', {
+            const res = await fetch('/api/v1/devices', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify(payload)
             });
 

@@ -15,6 +15,12 @@ import ManualEntry from './components/ManualEntry'
 import LockdownScreen from './components/LockdownScreen'
 import ErrorBoundary from './components/ErrorBoundary'
 
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { useContext } from 'react'
+import { AuthContext } from './context/AuthContext'
+import Login from './components/Login'
+import UserManagement from './components/UserManagement'
+
 // Use import.meta.glob so Vite doesn't pre-resolve the path at build time.
 // This means a missing Footer.jsx won't crash the dev server, but will
 // be caught at runtime by our ErrorBoundary -> Lockdown pipeline.
@@ -50,11 +56,17 @@ const FallbackFooter = ({ darkMode }) => {
 
 
 function App() {
+  const { token, user, logout, loading: authLoading } = useContext(AuthContext)
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  const activeTab = location.pathname === '/' ? 'dashboard' : location.pathname.substring(1)
+  const setActiveTab = (tab) => navigate(tab === 'dashboard' ? '/' : `/${tab}`)
+
   const [devices, setDevices] = useState([])
   const [networkDevices, setNetworkDevices] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [activeTab, setActiveTab] = useState('dashboard')
 
   // Reassign modal state
   const [reassignTarget, setReassignTarget] = useState(null) // device object or null
@@ -83,13 +95,18 @@ function App() {
   }
 
   const fetchDevices = async () => {
+    if (!token) return;
     try {
-      const response = await fetch('/api/v1/devices?limit=1000')
+      const response = await fetch('/api/v1/devices?limit=1000', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
       if (!response.ok) throw new Error('Failed to fetch devices')
       const data = await response.json()
       setDevices(data)
 
-      const netResponse = await fetch('/api/v1/network/devices')
+      const netResponse = await fetch('/api/v1/network/devices', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
       if (netResponse.ok) {
         const netData = await netResponse.json()
         setNetworkDevices(netData)
@@ -105,10 +122,13 @@ function App() {
   }
 
   useEffect(() => {
-    fetchDevices()
-    const interval = setInterval(fetchDevices, 30000)
-    return () => clearInterval(interval)
-  }, [])
+    if (token) {
+      setLoading(true)
+      fetchDevices()
+      const interval = setInterval(fetchDevices, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [token])
 
   // We no longer deduplicate here since the backend now merges duplicates by MAC.
   // We want admins to see all actual DB records so they can delete old phantom ones.
@@ -126,7 +146,7 @@ function App() {
         if (!isLaptopOrDesktop) return false;
 
         // "Recent Activity" -> show devices last seen >= 3 hours ago AND < 24 hours ago, OR currently online (<10 mins)
-        const dateStr = device.last_seen.endsWith('Z') ? device.last_seen : device.last_seen + 'Z';
+        const dateStr = device.last_seen.endsWith('Z') || device.last_seen.includes('+') ? device.last_seen : device.last_seen + 'Z';
         const diffMs = Date.now() - new Date(dateStr).getTime();
         return (diffMs >= 10800000 && diffMs < 86400000) || diffMs < 600000; // 3-24 hrs OR < 10 mins (online)
       }
@@ -154,13 +174,13 @@ function App() {
         let bValue = b[sortConfig.key]
 
         if (sortConfig.key === 'last_seen') {
-          const aDateStr = aValue.endsWith('Z') ? aValue : aValue + 'Z'
-          const bDateStr = bValue.endsWith('Z') ? bValue : bValue + 'Z'
+          const aDateStr = aValue.endsWith('Z') || aValue.includes('+') ? aValue : aValue + 'Z'
+          const bDateStr = bValue.endsWith('Z') || bValue.includes('+') ? bValue : bValue + 'Z'
           aValue = new Date(aDateStr).getTime()
           bValue = new Date(bDateStr).getTime()
         } else if (sortConfig.key === 'status') {
-          const isOnlineA = (Date.now() - new Date(a.last_seen.endsWith('Z') ? a.last_seen : a.last_seen + 'Z').getTime()) < 600000
-          const isOnlineB = (Date.now() - new Date(b.last_seen.endsWith('Z') ? b.last_seen : b.last_seen + 'Z').getTime()) < 600000
+          const isOnlineA = (Date.now() - new Date(a.last_seen.endsWith('Z') || a.last_seen.includes('+') ? a.last_seen : a.last_seen + 'Z').getTime()) < 600000
+          const isOnlineB = (Date.now() - new Date(b.last_seen.endsWith('Z') || b.last_seen.includes('+') ? b.last_seen : b.last_seen + 'Z').getTime()) < 600000
           aValue = isOnlineA ? 1 : 0
           bValue = isOnlineB ? 1 : 0
         } else if (sortConfig.key === 'hardware') {
@@ -196,6 +216,56 @@ function App() {
     }
     setSortConfig({ key, direction })
   }
+
+  const exportToCSV = () => {
+    if (sortedAndFilteredDevices.length === 0) {
+      alert('No devices to export.');
+      return;
+    }
+
+    const headers = [
+      'Hostname', 'Owner', 'Department', 'IP Address', 'OS', 'MAC',
+      'System Type', 'Hardware', 'Condition', 'Asset Status', 'Last Seen'
+    ];
+
+    const rows = sortedAndFilteredDevices.map(d => {
+      const hdwr = [
+        d.gpu_model || '',
+        d.ram_total_gb ? Math.round(d.ram_total_gb) + 'GB RAM' : '',
+        d.disk_total_gb ? Math.round(d.disk_total_gb) + 'GB Disk' : ''
+      ].filter(Boolean).join(' | ');
+
+      const dateStr = d.last_seen.endsWith('Z') || d.last_seen.includes('+') ? d.last_seen : d.last_seen + 'Z';
+      const lastSeenFormatted = new Date(dateStr).toLocaleString();
+
+      return [
+        `"${d.hostname || ''}"`,
+        `"${d.current_user || ''}"`,
+        `"${d.department || ''}"`,
+        `"${d.ip_address || ''}"`,
+        `"${d.os_name || ''} ${d.os_release || ''}"`,
+        `"${d.mac_address || ''}"`,
+        `"${d.system_type || d.device_type || ''}"`,
+        `"${hdwr}"`,
+        `"${d.condition || 'Functioning'}"`,
+        `"${d.asset_status || 'Assigned'}"`,
+        `"${lastSeenFormatted}"`
+      ].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const today = new Date().toISOString().slice(0, 10);
+    link.download = `ict_inventory_export_${today}.csv`;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   // Unique departments for filter dropdown (All Devices tab)
   const uniqueDepartments = useMemo(() => {
@@ -380,7 +450,7 @@ function App() {
     setPasswordInput('');
   };
 
-  if (!isSecurityBooted) {
+  if (!isSecurityBooted || authLoading) {
     return (
       <div style={{
         height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -389,6 +459,10 @@ function App() {
         Loading Security Core...
       </div>
     );
+  }
+
+  if (!token) {
+    return <Login darkMode={darkMode} />
   }
 
   const isLockdownActive = !isSecurityValid && !isBypassed;
@@ -519,7 +593,9 @@ function App() {
                 )}
 
                 {/* Tab Routing */}
-                {activeTab === 'settings' ? (
+                {activeTab === 'users' ? (
+                  <UserManagement darkMode={darkMode} />
+                ) : activeTab === 'settings' ? (
                   <Settings devices={devices} darkMode={darkMode} toggleTheme={toggleTheme} />
                 ) : activeTab === 'manual-entry' ? (
                   <ManualEntry darkMode={darkMode} onSuccess={() => { fetchDevices(); setActiveTab('all'); }} />
@@ -598,6 +674,19 @@ function App() {
                         <span style={{ fontSize: '0.8rem', color: darkMode ? '#666' : '#aaa', marginLeft: 'auto' }}>
                           {sortedAndFilteredDevices.length} device{sortedAndFilteredDevices.length !== 1 ? 's' : ''}
                         </span>
+                        <button
+                          onClick={exportToCSV}
+                          title="Export all currently filtered devices to a CSV file"
+                          style={{
+                            padding: '6px 12px', borderRadius: '6px', border: 'none',
+                            backgroundColor: darkMode ? '#2c3e2e' : '#E8F5E9',
+                            color: '#4CAF50', fontWeight: 'bold',
+                            cursor: 'pointer', fontSize: '0.85rem', marginLeft: '0.75rem',
+                            display: 'flex', alignItems: 'center', gap: '6px'
+                          }}
+                        >
+                          ⬇ Export CSV
+                        </button>
                       </div>
                     )}
                     {/* Device Counts Summary */}
@@ -612,14 +701,14 @@ function App() {
                       <div>
                         <span style={{ fontWeight: 'bold', color: '#4CAF50' }}>Online:</span>{' '}
                         {sortedAndFilteredDevices.filter(d => {
-                          const dateStr = d.last_seen.endsWith('Z') ? d.last_seen : d.last_seen + 'Z'
+                          const dateStr = d.last_seen.endsWith('Z') || d.last_seen.includes('+') ? d.last_seen : d.last_seen + 'Z'
                           return (new Date() - new Date(dateStr)) < 600000  // 10 min threshold
                         }).length}
                       </div>
                       <div>
                         <span style={{ fontWeight: 'bold', color: '#BDBDBD' }}>Offline:</span>{' '}
                         {sortedAndFilteredDevices.filter(d => {
-                          const dateStr = d.last_seen.endsWith('Z') ? d.last_seen : d.last_seen + 'Z'
+                          const dateStr = d.last_seen.endsWith('Z') || d.last_seen.includes('+') ? d.last_seen : d.last_seen + 'Z'
                           return (new Date() - new Date(dateStr)) >= 600000
                         }).length}
                       </div>
@@ -666,7 +755,7 @@ function App() {
                         </thead>
                         <tbody>
                           {sortedAndFilteredDevices.map((device) => {
-                            const dateStr = device.last_seen.endsWith('Z') ? device.last_seen : device.last_seen + 'Z'
+                            const dateStr = device.last_seen.endsWith('Z') || device.last_seen.includes('+') ? device.last_seen : device.last_seen + 'Z'
                             const lastSeenDate = new Date(dateStr)
                             const diffMs = new Date() - lastSeenDate
                             const isOnline = diffMs < 600000  // 10 min threshold
@@ -739,58 +828,60 @@ function App() {
                                   <div style={{ fontSize: '0.8rem', color: '#9e9e9e' }}>{lastSeenDate.toLocaleDateString()}</div>
                                 </td>
                                 <td style={{ padding: '1rem' }}>
-                                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', minWidth: '150px' }}>
-                                    <button
-                                      onClick={() => setReassignTarget(device)}
-                                      style={{
-                                        padding: '4px 10px',
-                                        backgroundColor: darkMode ? '#2c3e2e' : '#E8F5E9',
-                                        color: '#2E7D32',
-                                        border: '1px solid #A5D6A7',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        fontSize: '0.78rem',
-                                        fontWeight: 'bold'
-                                      }}
-                                    >
-                                      Reassign
-                                    </button>
-                                    {(activeTab === 'dashboard' || activeTab === 'all') && (
+                                  {user?.role === 'Admin' && (
+                                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', minWidth: '150px' }}>
                                       <button
-                                        onClick={() => setDeptTarget(device)}
+                                        onClick={() => setReassignTarget(device)}
                                         style={{
                                           padding: '4px 10px',
-                                          backgroundColor: darkMode ? '#1a2a3a' : '#E3F2FD',
-                                          color: '#1976D2',
-                                          border: '1px solid #90CAF9',
+                                          backgroundColor: darkMode ? '#2c3e2e' : '#E8F5E9',
+                                          color: '#2E7D32',
+                                          border: '1px solid #A5D6A7',
                                           borderRadius: '4px',
                                           cursor: 'pointer',
                                           fontSize: '0.78rem',
                                           fontWeight: 'bold'
                                         }}
                                       >
-                                        Edit Info
+                                        Reassign
                                       </button>
-                                    )}
-                                    {activeTab === 'all' && (
-                                      <button
-                                        onClick={() => setDeleteTarget(device)}
-                                        title="Permanently delete this device (use for duplicates / phantom entries)"
-                                        style={{
-                                          padding: '4px 10px',
-                                          backgroundColor: darkMode ? '#3a1a1a' : '#FFEBEE',
-                                          color: '#C62828',
-                                          border: '1px solid #EF9A9A',
-                                          borderRadius: '4px',
-                                          cursor: 'pointer',
-                                          fontSize: '0.78rem',
-                                          fontWeight: 'bold'
-                                        }}
-                                      >
-                                        🗑 Delete
-                                      </button>
-                                    )}
-                                  </div>
+                                      {(activeTab === 'dashboard' || activeTab === 'all') && (
+                                        <button
+                                          onClick={() => setDeptTarget(device)}
+                                          style={{
+                                            padding: '4px 10px',
+                                            backgroundColor: darkMode ? '#1a2a3a' : '#E3F2FD',
+                                            color: '#1976D2',
+                                            border: '1px solid #90CAF9',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer',
+                                            fontSize: '0.78rem',
+                                            fontWeight: 'bold'
+                                          }}
+                                        >
+                                          Edit Info
+                                        </button>
+                                      )}
+                                      {activeTab === 'all' && (
+                                        <button
+                                          onClick={() => setDeleteTarget(device)}
+                                          title="Permanently delete this device (use for duplicates / phantom entries)"
+                                          style={{
+                                            padding: '4px 10px',
+                                            backgroundColor: darkMode ? '#3a1a1a' : '#FFEBEE',
+                                            color: '#C62828',
+                                            border: '1px solid #EF9A9A',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer',
+                                            fontSize: '0.78rem',
+                                            fontWeight: 'bold'
+                                          }}
+                                        >
+                                          🗑 Delete
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
                                 </td>
                               </tr>
                             )

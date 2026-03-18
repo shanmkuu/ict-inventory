@@ -4,6 +4,8 @@ import './index.css'
 import App from './App.jsx'
 import ErrorBoundary from './components/ErrorBoundary'
 import LockdownScreen from './components/LockdownScreen'
+import { BrowserRouter } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
 
 const GlobalLockdown = () => (
   <LockdownScreen
@@ -17,7 +19,11 @@ const GlobalLockdown = () => (
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ErrorBoundary fallback={<GlobalLockdown />}>
-      <App />
+      <BrowserRouter>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </BrowserRouter>
     </ErrorBoundary>
   </StrictMode>,
 )

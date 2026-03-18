@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from .. import database, schemas
+from .. import database, schemas, auth
 from ..services.discovery_service import DiscoveryService
 import json
 import asyncio
@@ -54,7 +54,7 @@ async def start_periodic_scan(interval_seconds: int = 300):
 # ---------------------------------------------------------------------------
 
 @router.get("/scan-status")
-def get_scan_status():
+def get_scan_status(current_user=Depends(auth.get_current_user)):
     """Returns the current state of the network scan."""
     return {
         "running": scan_state["running"],
@@ -67,13 +67,13 @@ def get_scan_status():
 
 
 @router.get("/devices", response_model=List[schemas.NetworkDevice])
-def list_network_devices(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def list_network_devices(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user=Depends(auth.get_current_user)):
     devices = db.query(database.NetworkDevice).offset(skip).limit(limit).all()
     return devices
 
 
 @router.get("/devices/{device_id}", response_model=schemas.NetworkDevice)
-def read_network_device(device_id: int, db: Session = Depends(get_db)):
+def read_network_device(device_id: int, db: Session = Depends(get_db), current_user=Depends(auth.get_current_user)):
     db_device = db.query(database.NetworkDevice).filter(database.NetworkDevice.id == device_id).first()
     if db_device is None:
         raise HTTPException(status_code=404, detail="Network Device not found")
@@ -81,7 +81,7 @@ def read_network_device(device_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/devices/{device_id}", status_code=204)
-def delete_network_device(device_id: int, db: Session = Depends(get_db)):
+def delete_network_device(device_id: int, db: Session = Depends(get_db), current_admin=Depends(auth.get_current_admin_user)):
     db_device = db.query(database.NetworkDevice).filter(database.NetworkDevice.id == device_id).first()
     if db_device is None:
         raise HTTPException(status_code=404, detail="Network Device not found")
@@ -91,7 +91,7 @@ def delete_network_device(device_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/clear", status_code=204)
-def clear_all_network_devices(db: Session = Depends(get_db)):
+def clear_all_network_devices(db: Session = Depends(get_db), current_admin=Depends(auth.get_current_admin_user)):
     """Deletes all records from the network_devices table."""
     try:
         db.query(database.NetworkDevice).delete()
@@ -103,7 +103,7 @@ def clear_all_network_devices(db: Session = Depends(get_db)):
 
 
 @router.post("/scan")
-async def start_network_scan(background_tasks: BackgroundTasks, subnet: Optional[str] = None):
+async def start_network_scan(background_tasks: BackgroundTasks, subnet: Optional[str] = None, current_admin=Depends(auth.get_current_admin_user)):
     """
     Starts a background scan.
     - If `subnet` is provided (CIDR), scan only that subnet (backward-compatible).

@@ -1,11 +1,8 @@
 @echo off
 echo Starting ICT Inventory System...
 
-:: Start Backend
-start "ICT Inventory Backend" cmd /k "cd backend && python main.py"
-
-:: Start Backend (Uvicorn Reload)
-start "ICT Inventory Backend (Uvicorn)" cmd /k "py -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
+:: Start Backend (Uvicorn - all interfaces)
+start "ICT Inventory Backend" cmd /k "C:\Users\Admin\AppData\Local\Programs\Python\Python311\python.exe -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
 
 :: Wait a moment for backend to initialize
 timeout /t 5
