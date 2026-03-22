@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
 from . import database, schemas, auth
 from .routes import network_devices, auth as auth_router, users as users_router
+from .ip_utils import resolve_department
 import os
 import csv
 import io
@@ -56,6 +57,19 @@ try:
         new_admin = database.User(username="admin", hashed_password=hashed, role="Admin")
         startup_db.add(new_admin)
         startup_db.commit()
+
+    # ── Backfill departments for existing devices that have none ──────────────
+    unassigned = startup_db.query(database.Device).filter(
+        (database.Device.department == None) | (database.Device.department == "")
+    ).all()
+    updated = 0
+    for device in unassigned:
+        dept = resolve_department(device.ip_address)
+        device.department = dept
+        updated += 1
+    if updated:
+        startup_db.commit()
+        print(f"[Startup] Auto-assigned departments to {updated} device(s) based on IP address.")
 finally:
     startup_db.close()
 
@@ -131,14 +145,24 @@ def receive_heartbeat(
             if value is not None:
                 setattr(db_device, key, value)
         db_device.last_seen = datetime.now(timezone.utc)
+
+        # Auto-assign department from IP if none is set yet (backfill for existing devices)
+        if not db_device.department:
+            auto_dept = resolve_department(device_data.ip_address)
+            db_device.department = auto_dept
     else:
         # Brand-new device — exclude protected fields so DB defaults apply
         new_device_data = device_data.dict(exclude=AGENT_PROTECTED_FIELDS | {"timestamp"})
         db_device = database.Device(**new_device_data)
         db_device.last_seen = datetime.now(timezone.utc)
+
+        # Auto-assign department from IP address on first registration
+        db_device.department = resolve_department(device_data.ip_address)
+
         db.add(db_device)
         # Audit: new device
-        _write_audit(db, "DEVICE_ADDED", db_device.device_id, db_device.hostname, "agent", f"New device registered: {db_device.hostname}")
+        _write_audit(db, "DEVICE_ADDED", db_device.device_id, db_device.hostname, "agent",
+                     f"New device registered: {db_device.hostname} — auto-assigned to '{db_device.department}'")
 
     db.commit()
     db.refresh(db_device)

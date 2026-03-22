@@ -7,6 +7,7 @@ import struct
 import platform
 from concurrent.futures import ThreadPoolExecutor
 from .snmp_service import SnmpService
+from ..ip_utils import SUBNET_DEPARTMENT_MAP
 
 class DiscoveryService:
     def __init__(self):
@@ -60,9 +61,9 @@ class DiscoveryService:
             if subnet_str not in expanded:
                 expanded.append(subnet_str)
 
-        # Explicitly append the requested subnets
-        explicit_subnets = ["10.10.0.0/24", "192.168.0.0/24"]
-        for subnet_str in explicit_subnets:
+        # Ensure all department subnets from the routing table are always scanned
+        for network, _dept in SUBNET_DEPARTMENT_MAP:
+            subnet_str = str(network)
             if subnet_str not in expanded:
                 expanded.append(subnet_str)
 
