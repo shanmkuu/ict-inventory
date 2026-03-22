@@ -14,7 +14,7 @@ start "ICT Inventory Frontend" cmd /k "cd frontend && npm run dev:host"
 timeout /t 5
 
 echo Opening Dashboard...
-start http://blackhat-x.local:5173
+start http://blackhat-x.local:5173/login
 
 :: Start Agent
 start "ICT Inventory Agent" cmd /k "python agent.py"

@@ -60,7 +60,7 @@ function App() {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const activeTab = location.pathname === '/' ? 'dashboard' : location.pathname.substring(1)
+  const activeTab = location.pathname === '/' ? 'dashboard' : location.pathname.startsWith('/login') ? 'dashboard' : location.pathname.substring(1)
   const setActiveTab = (tab) => navigate(tab === 'dashboard' ? '/' : `/${tab}`)
 
   const [devices, setDevices] = useState([])
@@ -155,25 +155,17 @@ function App() {
       if (activeTab === 'all') {
         const matchesDept = deptFilter === 'All' || (device.department || '') === deptFilter;
         const matchesCondition = conditionFilter === 'All' || (device.condition || 'Functioning') === conditionFilter;
-        const matchesOS = osFilter === 'All' || (device.os_name || '') === osFilter;
+
+        let dOs = device.os_name || '';
+        if (device.os_release && !dOs.includes(device.os_release)) {
+          dOs += ` ${device.os_release}`;
+        }
+        const matchesOS = osFilter === 'All' || dOs.trim() === osFilter;
 
         const q = searchQuery.toLowerCase();
-        const matchesSearch = !q || [
-          device.hostname,
-          device.current_user,
-          device.department,
-          device.ip_address,
-          device.os_name,
-          device.mac_address,
-          device.system_type,
-          device.device_type,
-          device.condition,
-          device.asset_status,
-          device.serial_number,
-          device.gpu_model,
-          device.ram_total_gb ? String(device.ram_total_gb) : '',
-          device.disk_total_gb ? String(device.disk_total_gb) : ''
-        ].some(val => val && String(val).toLowerCase().includes(q));
+        const matchesSearch = !q || Object.values(device).some(val =>
+          val !== null && val !== undefined && String(val).toLowerCase().includes(q)
+        );
 
         const dType = (device.system_type || device.device_type || '').toLowerCase();
         const isLaptopOrDesktop = dType === 'laptop' || dType === 'desktop';
@@ -298,7 +290,15 @@ function App() {
   // Unique OS types for filter dropdown (All Devices tab)
   const uniqueOS = useMemo(() => {
     const osSet = new Set()
-    uniqueDevices.forEach(d => { if (d.os_name) osSet.add(d.os_name) })
+    uniqueDevices.forEach(d => {
+      if (d.os_name) {
+        let osStr = d.os_name;
+        if (d.os_release && !osStr.includes(d.os_release)) {
+          osStr += ` ${d.os_release}`;
+        }
+        osSet.add(osStr.trim());
+      }
+    })
     return ['All', ...Array.from(osSet).sort()]
   }, [uniqueDevices])
 
@@ -487,6 +487,12 @@ function App() {
         Loading Security Core...
       </div>
     );
+  }
+
+  // Show Login page when the /login route is explicitly requested
+  // (Login.jsx handles auto-redirect to / if user already has a valid token)
+  if (location.pathname === '/login') {
+    return <Login darkMode={darkMode} />
   }
 
   if (!token) {
