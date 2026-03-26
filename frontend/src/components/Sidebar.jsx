@@ -14,7 +14,7 @@ const Sidebar = ({ activeTab, onTabChange, darkMode }) => {
         { id: 'laptop', label: 'Laptops', icon: Laptop },
         { id: 'network-devices', label: 'Network Devices', icon: Network },
         isAdmin ? { id: 'manual-entry', label: 'Add Device', icon: PlusCircle } : null,
-        { id: 'records', label: 'Records', icon: ClipboardList },
+        { id: 'records', label: 'Audit Trail', icon: ClipboardList },
         isAdmin ? { id: 'users', label: 'Manage Users', icon: Users } : null,
         isAdmin ? { id: 'settings', label: 'Settings', icon: Settings } : null,
     ].filter(Boolean)

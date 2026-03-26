@@ -311,7 +311,7 @@ function App() {
       case 'laptop': return 'Laptops'
       case 'network-devices': return 'Network Devices'
       case 'manual-entry': return 'Add Device (Manual Entry)'
-      case 'records': return 'Records – Assignment History'
+      case 'records': return 'Audit Trail – Assignment History'
       case 'settings': return 'Settings'
       default: return 'Dashboard'
     }
