@@ -35,3 +35,9 @@ frontend/node_modules/
 
 # Local Config
 config.json
+
+# Test & Temp
+tests/
+tmp/
+test_scan.py
+*.db

@@ -11,7 +11,7 @@ Cross-platform Bash agent that collects system inventory data and sends it to th
 | `install.sh` | Automated installer (systemd / launchd / cron) |
 
 ## Quick Start
-
+.
 ### 1. Configure
 
 Edit `config.json` and set your server URL:
